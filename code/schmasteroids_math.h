@@ -445,12 +445,14 @@ internal inline __m128
 RandFloat01_4()
 {
     __m128 Result = _mm_set_ps(RandFloat01(),  RandFloat01(), RandFloat01(),  RandFloat01());
+    return Result;
 }
 
 internal inline __m128
 RandHeading_4()
 {
     __m128 Result = _mm_mul_ps(RandFloat01_4(), _mm_set_ps1(2.0f * PI));
+    return Result;
 }
 
 

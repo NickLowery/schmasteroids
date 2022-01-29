@@ -36,7 +36,11 @@ struct _memory_arena;
 // Windowsdebug stuff
 // TODO: Move this out somewhere to keep things cleaner?
 #include <immintrin.h>
+#if SCHM_SDL
+#include <emmintrin.h>
+#else
 #include <windows.h>
+#endif
 #if DEBUG_BUILD
 #include <intrin.h>
 #pragma intrinsic(__rdtsc)
@@ -46,6 +50,7 @@ static float DEBUGPerfFrequency = (float)_DEBUGPerformanceFrequency.QuadPart;
 #endif
 
 #include "schmasteroids_math.h"
+#include "schmasteroids_math.cpp"
 #include "schmasteroids_strings.h"
 #include "schm_sound.h"
 
