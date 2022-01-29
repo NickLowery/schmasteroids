@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
                                   DEFAULT_W,
                                   DEFAULT_H,
                                   SDL_WINDOW_RESIZABLE);
-    SDL_Renderer *Renderer = SDL_CreateRenderer(Window, -1, 0);
+    SDL_Renderer *Renderer = SDL_CreateRenderer(MainWindow, -1, 0);
 
     bool32 ShouldQuit = false;
     while(!ShouldQuit) {
@@ -35,6 +35,23 @@ int main(int argc, char *argv[])
                         printf("SDL_WINDOWEVENT_RESIZED (%d x %d)", 
                                Event.window.data1,
                                Event.window.data2);
+                    } break;
+                    case SDL_WINDOWEVENT_EXPOSED: {
+                        // TODO: Get window ID from the event in case we ever have more
+                        // than one window? Doesn't seem likely that we would want to
+                        static bool IsWhite = true;
+                        if (IsWhite == true)
+                        {
+                            SDL_SetRenderDrawColor(Renderer, 255, 255, 255, 255);
+                            IsWhite = false;
+                        }
+                        else
+                        {
+                            SDL_SetRenderDrawColor(Renderer, 0, 0, 0, 255);
+                            IsWhite = true;
+                        }
+                        SDL_RenderClear(Renderer);
+                        SDL_RenderPresent(Renderer);
                     } break;
                 }
             } break;
