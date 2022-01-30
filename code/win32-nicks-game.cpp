@@ -741,6 +741,7 @@ WinMain(HINSTANCE Instance,
         // Get Window rect according to Backbuffer size
         GlobalBackbufferBitmapInfo = {};
         GlobalBackbuffer = {};
+        // TODO: BytesPerPixel doesn't need to be a variable.
         GlobalBackbuffer.BytesPerPixel = 4;
         // TODO: Detect size of the monitor we're on and try to center the window and make it a reasonable size.
         Win32ResizeBackbuffer(DEFAULT_BACKBUFFERW, DEFAULT_BACKBUFFERH);
