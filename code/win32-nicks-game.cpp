@@ -707,6 +707,7 @@ WindowCallback(
     return Result;
 }
 
+// TODO: Is it more precise to do this in u64?
 internal float 
 GetSecondsElapsed(LARGE_INTEGER PreCounter, LARGE_INTEGER PostCounter)
 {

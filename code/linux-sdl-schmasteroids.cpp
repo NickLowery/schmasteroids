@@ -3,6 +3,8 @@
 #define DEFAULT_W 640
 #define DEFAULT_H 480
 #define GLOBAL_SAMPLES_PER_SECOND 48000
+#define TARGETFPS 30
+
 
 typedef struct _output_data {
     SDL_Texture *Texture;
@@ -26,14 +28,15 @@ internal void ResizeBackbuffer(SDL_Renderer *Renderer, output_data *OutputData, 
                                 SDL_TEXTUREACCESS_STREAMING,
                                 Width,
                                 Height);
-    // TODO: Use mmap? Might not be Mac-compatible
+    // TODO: Use mmap? Might not be Mac-compatible.
     OutputData->Pixels = malloc(Width * Height * 4);
     OutputData->Pitch = Width * 4;
 }
 
 internal void SDLDrawBackbufferToWindow(SDL_Window *Window, SDL_Renderer *Renderer, output_data *OutputData)
 {
-    // TODO: Use SDL_LockTexture? Supposedly faster.
+    // TODO: Use SDL_LockTexture? Supposedly faster. Just write directly to
+    // what it returns?
     if (SDL_UpdateTexture(OutputData->Texture, 0, 
                       OutputData->Pixels, OutputData->Pitch))
     {
@@ -72,11 +75,14 @@ int main(int argc, char *argv[])
     AudioSpec.samples = 32768;
     if(SDL_OpenAudio(&AudioSpec, 0)) {
         printf("Error opening audio device\n");
-        // TODO: Do something about this
+        // TODO: Do something about this error
     }
-
     
-    // TODO: Clocks!
+    // Timing set-up
+    u64 PerfFrequency = SDL_GetPerformanceFrequency();
+    float TargetSecondsPerFrame = 1.0f / (float)TARGETFPS;
+    u64 LastPreUpdateCounter = SDL_GetPerformanceCounter();
+
     // TODO: Memory!
     // TODO: Load game code!
     // Initialize input
@@ -152,7 +158,20 @@ int main(int argc, char *argv[])
                 } break;
             }
         }
+        u64 PreUpdateCounter = SDL_GetPerformanceCounter();
+        u64 PreUpdateCycles = _rdtsc();
+        // TODO: Update the game when we have game code!
         SDLDrawBackbufferToWindow(MainWindow, Renderer, &OutputData);
+        u64 PostUpdateCycles = _rdtsc();
+        printf("Cycles drawing backbuffer: %lld\n", PostUpdateCycles - PreUpdateCycles);
+        u64 LoopEndCounter = SDL_GetPerformanceCounter();
+        // TODO: Is it better to do this in u64?
+        float SecondsInUpdate = (float)(LoopEndCounter - PreUpdateCounter) /
+                                (float)PerfFrequency;
+        printf("Seconds in update: %f\n", SecondsInUpdate);
+        if (SecondsInUpdate < TargetSecondsPerFrame) {
+            // TODO: Sleep
+        }
         // TODO: Use SDL_QueueAudio to queue some audio!
     }
 
