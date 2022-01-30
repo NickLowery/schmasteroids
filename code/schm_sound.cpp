@@ -25,7 +25,7 @@ CreateCompatibleWav(game_memory *GameMemory, memory_arena *Arena, platform_wav_l
     return Result;
 }
 
-internal game_compatible_wav LoadWav(game_memory *GameMemory, memory_arena *Arena, char*Filename)
+internal game_compatible_wav LoadWav(game_memory *GameMemory, memory_arena *Arena, const char*Filename)
 {
     platform_wav_load_info WavInfo = GameMemory->PlatformGetWavLoadInfo(Filename);
     game_compatible_wav Result = CreateCompatibleWav(GameMemory, Arena, WavInfo);

@@ -74,7 +74,7 @@ internal void ResetSliders(editor_state *EditorState)
     EditorState->Sliders = 0;
 }
 internal slider* PushSlider(editor_state *EditorState, memory_arena *Arena, 
-        float* Val = 0, float MinVal = 0.0f, float MaxVal = 0.0f, char *Name = 0)
+        float* Val = 0, float MinVal = 0.0f, float MaxVal = 0.0f, const char *Name = 0)
 {
     slider* Result = PushStruct(Arena, slider);
     EditorState->SliderCount++;

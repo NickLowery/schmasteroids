@@ -22,7 +22,7 @@ ProjectGlyphIntoRect(glyph *Original, rect Rect)
 // can call CalculateLightMarginSq.  I think I need the flexibility of that.
 internal v2
 PrintFromMinCornerAndGlyphDim(render_buffer *Renderer, metagame_state *Metagame,
-                                light_source *Light, char* CString,
+                                light_source *Light, const char* CString,
                                 v2 MinPoint, v2 GlyphDim)
 {
     // TODO: It seems like this should take a char count?
@@ -76,7 +76,7 @@ CalculateWidthFromCharCountAndGlyphDim(metagame_state *Metagame, u32 CharCount, 
 // NOTE: Returns max corner
 internal v2
 PrintFromXBoundsAndCenterY(render_buffer *Renderer, metagame_state *Metagame, 
-        light_source *Light, char* CString, float Left, float Right, float CenterY)
+        light_source *Light, const char* CString, float Left, float Right, float CenterY)
 {
     u32 CharCount = StringLength(CString);
     v2 GlyphDim = CalculateGlyphDimFromWidth(Metagame, CharCount, Right - Left);
@@ -111,7 +111,7 @@ PrintFromXBoundsAndBottom(render_buffer *Renderer, metagame_state *Metagame,
 
 inline v2 
 PrintFromWidthAndCenter(render_buffer *Renderer, metagame_state *Metagame,
-        light_source *Light, char* CString, float Width, v2 Center)
+        light_source *Light, const char* CString, float Width, v2 Center)
 {
     v2 Result = PrintFromXBoundsAndCenterY(Renderer, Metagame, Light, CString, 
                                            Center.X - (Width*0.5f), Center.X + (Width*0.5f), Center.Y);
@@ -120,7 +120,7 @@ PrintFromWidthAndCenter(render_buffer *Renderer, metagame_state *Metagame,
 
 inline void
 PrintFromGlyphSizeAndCenterBottom(render_buffer *Renderer, metagame_state *Metagame,
-        light_source *Light, char* CString, v2 GlyphDim, v2 CenterBottom)
+        light_source *Light, const char* CString, v2 GlyphDim, v2 CenterBottom)
 {
     u32 CharCount = StringLength(CString);
     float Width = CalculateWidthFromCharCountAndGlyphDim(Metagame, CharCount, GlyphDim);

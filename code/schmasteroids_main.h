@@ -38,6 +38,9 @@ struct _memory_arena;
 #include <immintrin.h>
 #if SCHM_SDL
 #include <emmintrin.h>
+#include <string.h>
+// TODO: Do this in a nicer way and only define for DEBUG_BUILD
+#define sprintf_s snprintf
 #else
 #include <windows.h>
 #if DEBUG_BUILD
@@ -235,22 +238,22 @@ typedef struct {
 // NOTE: This should tell us the memory size for whatever sample rate we are actually using (if we support
 // multiple sample rates)!
 
-#define PLATFORM_GET_WAV_LOAD_INFO(name) platform_wav_load_info name(char *Filename)
+#define PLATFORM_GET_WAV_LOAD_INFO(name) platform_wav_load_info name(const char *Filename)
 typedef PLATFORM_GET_WAV_LOAD_INFO(platform_get_wav_load_info);
 
-#define PLATFORM_LOAD_WAV(name) void name(char *Filename, void* Memory, platform_wav_load_info Info)
+#define PLATFORM_LOAD_WAV(name) void name(const char *Filename, void* Memory, platform_wav_load_info Info)
 typedef PLATFORM_LOAD_WAV(platform_load_wav);
 
 #define PLATFORM_FREE_FILE_MEMORY(name) void name(void *Memory)
 typedef PLATFORM_FREE_FILE_MEMORY(platform_free_file_memory);
 
-#define PLATFORM_DEBUG_WRITE_FILE(name) void name(char *Filename, void* Memory, u32 WriteSize)
+#define PLATFORM_DEBUG_WRITE_FILE(name) void name(const char *Filename, void* Memory, u32 WriteSize)
 typedef PLATFORM_DEBUG_WRITE_FILE(platform_debug_write_file);
 
-#define PLATFORM_DEBUG_READ_FILE(name) u32 name(char *Filename, void* Memory, u32 ReadSize)
+#define PLATFORM_DEBUG_READ_FILE(name) u32 name(const char *Filename, void* Memory, u32 ReadSize)
 typedef PLATFORM_DEBUG_READ_FILE(platform_debug_read_file);
 
-#define PLATFORM_DEBUG_SAVE_FRAMEBUFFER_AS_BMP(name) void name(char *Filename)
+#define PLATFORM_DEBUG_SAVE_FRAMEBUFFER_AS_BMP(name) void name(const char *Filename)
 typedef PLATFORM_DEBUG_SAVE_FRAMEBUFFER_AS_BMP(platform_debug_save_framebuffer_as_bmp);
 
 #define PLATFORM_QUIT(name) void name(void)

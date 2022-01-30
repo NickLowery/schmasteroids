@@ -1,7 +1,6 @@
 #define internal static
 #include "schmasteroids_main.h"
 
-#include "schmasteroids_math.cpp"
 // NOTE: Always include, defines macros as nothing if we're not in benchmark mode
 #include "schm_bench.h"
 #include "schm_sound.cpp"

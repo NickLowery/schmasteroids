@@ -2,7 +2,7 @@
 #define SCHMASTEROIDS_STRINGS_H 1
 
 internal u32 
-StringLength(char* CString)
+StringLength(const char* CString)
 {
     i32 Result = 0;
     while (*CString++) {
@@ -12,7 +12,7 @@ StringLength(char* CString)
 }
 
 internal u32
-MaxStringLength(char** Strings, u32 StringCount)
+MaxStringLength(const char** Strings, u32 StringCount)
 {
     u32 Result = 0;
     for (u32 StringIndex = 0; StringIndex < StringCount; ++StringIndex)
@@ -63,7 +63,7 @@ internal char* StringCopy(char* Dest, char* Source)
     return Dest;
 }
 
-internal char* StringCopyCounted(char* Dest, char* Source, u32 MaxStringLength)
+internal char* StringCopyCounted(char* Dest, const char* Source, u32 MaxStringLength)
 {
     u32 Copied = 0;
     while(*Source != 0 && Copied < MaxStringLength) {

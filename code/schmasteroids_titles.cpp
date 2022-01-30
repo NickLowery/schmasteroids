@@ -56,7 +56,7 @@ PrintMenu(render_buffer *Renderer, metagame_state *Metagame, float MenuC_LFracti
     MenuLight.C_L *= MenuC_LFraction;
     float MenuWidth = TEXT_WIDTH - (2.0f*MenuMargin);
 
-    char *MenuOptions[MenuOption_Terminator];
+    const char *MenuOptions[MenuOption_Terminator];
     MenuOptions[MenuOption_Play] = "play";
     MenuOptions[MenuOption_ToggleFullScreen] = "toggle fullscreen";
     MenuOptions[MenuOption_Instructions] = "instructions";
@@ -83,7 +83,7 @@ internal void
 UpdateAndDrawTitleScreen(metagame_state *Metagame, render_buffer *Renderer, game_input *Input, float SceneAlpha = 1.0f)
 {
     float dTime = Input->SecondsElapsed;
-    char* Title = "schmasteroids";
+    const char* Title = "schmasteroids";
     float TitleH = 0.0f;
     float TitleS = 1.0f;
     float FinishedTitleC_L = 8.0f;
@@ -204,7 +204,7 @@ UpdateAndDrawTitleScreen(metagame_state *Metagame, render_buffer *Renderer, game
         {
             light_source InstructionsLight = light_source{MENU_H, MENU_S, MENU_C_L, MENU_ZDISTSQ};
             TitleC_L = FinishedTitleC_L;
-            char *Instructions[] = {"space to shoot", "arrows to fly", "go for it", "press space now"};
+            const char *Instructions[] = {"space to shoot", "arrows to fly", "go for it", "press space now"};
             float InstructionsMargin = CalculateLightMargin(&InstructionsLight, 1.0f/64.0f);
             u32 CharCount = MaxStringLength(Instructions, ArrayCount(Instructions));
             v2 GlyphDim = CalculateGlyphDimFromWidth(Metagame, CharCount, TEXT_WIDTH);
