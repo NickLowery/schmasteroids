@@ -2,6 +2,7 @@
 #include <schmasteroids_main.h>
 #define DEFAULT_W 640
 #define DEFAULT_H 480
+#define GLOBAL_SAMPLES_PER_SECOND 48000
 
 typedef struct _output_data {
     SDL_Texture *Texture;
@@ -30,7 +31,6 @@ internal void ResizeBackbuffer(SDL_Renderer *Renderer, output_data *OutputData, 
     OutputData->Pitch = Width * 4;
 }
 
-
 internal void SDLDrawBackbufferToWindow(SDL_Window *Window, SDL_Renderer *Renderer, output_data *OutputData)
 {
     // TODO: Use SDL_LockTexture? Supposedly faster.
@@ -46,7 +46,8 @@ internal void SDLDrawBackbufferToWindow(SDL_Window *Window, SDL_Renderer *Render
 int main(int argc, char *argv[])
 {
     //SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "SDL Schmasteroids", "TEST MESSAGE", 0);
-    if (SDL_Init(SDL_INIT_VIDEO) != 0)
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0)
+        // TODO: Possibly use SDL_AudioInit() to control what driver we use?
     {
         //TODO: SDL_Init didn't work!
         return -1;
@@ -64,7 +65,17 @@ int main(int argc, char *argv[])
     output_data OutputData = {};
     ResizeBackbuffer(Renderer, &OutputData, DEFAULT_W, DEFAULT_H);
 
-    // TODO: Sound!
+    SDL_AudioSpec AudioSpec = {};
+    AudioSpec.freq = GLOBAL_SAMPLES_PER_SECOND;
+    AudioSpec.format = AUDIO_S16LSB;
+    AudioSpec.channels = 2;
+    AudioSpec.samples = 32768;
+    if(SDL_OpenAudio(&AudioSpec, 0)) {
+        printf("Error opening audio device\n");
+        // TODO: Do something about this
+    }
+
+    
     // TODO: Clocks!
     // TODO: Memory!
     // TODO: Load game code!
@@ -142,6 +153,7 @@ int main(int argc, char *argv[])
             }
         }
         SDLDrawBackbufferToWindow(MainWindow, Renderer, &OutputData);
+        // TODO: Use SDL_QueueAudio to queue some audio!
     }
 
 
