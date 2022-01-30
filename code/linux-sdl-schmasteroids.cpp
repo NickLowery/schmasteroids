@@ -1,5 +1,6 @@
 #include <SDL.h>
 #include <schmasteroids_main.h>
+#include <sys/mman.h>
 #define DEFAULT_W 640
 #define DEFAULT_H 480
 #define GLOBAL_SAMPLES_PER_SECOND 48000
@@ -83,8 +84,28 @@ int main(int argc, char *argv[])
     float TargetSecondsPerFrame = 1.0f / (float)TARGETFPS;
     u64 LastPreUpdateCounter = SDL_GetPerformanceCounter();
 
-    // TODO: Memory!
+    // Memory
+#if DEBUG_BUILD
+    void* GameMemoryBase = (void*)Terabytes(2);
+#else
+    void* GameMemoryBase = 0;
+#endif
+    game_memory GameMemory = {};
+    GameMemory.PermanentStorageSize = PERMANENT_STORE_SIZE;
+    GameMemory.TransientStorageSize = TRANSIENT_STORE_SIZE;
+    size_t CombinedMemorySize = (size_t)(GameMemory.PermanentStorageSize +
+                                GameMemory.TransientStorageSize);
+    // TODO: Mac compatible?
+    GameMemory.PermanentStorage = mmap(GameMemoryBase, CombinedMemorySize,
+                                       PROT_READ | PROT_WRITE,
+                                       MAP_ANON | MAP_PRIVATE,
+                                       -1, 0);
+    Assert(GameMemory.PermanentStorage);
+    GameMemory.TransientStorage = (u8*)GameMemory.PermanentStorage + 
+                                  GameMemory.PermanentStorageSize;
+
     // TODO: Load game code!
+
     // Initialize input
     game_input GameInputs[2];
     for (int i=0;i<2;i++) {
@@ -160,7 +181,7 @@ int main(int argc, char *argv[])
         }
         u64 PreUpdateCounter = SDL_GetPerformanceCounter();
         u64 PreUpdateCycles = _rdtsc();
-        // TODO: Update the game when we have game code!
+        // TODO: Update the game when we have game code!!!
         SDLDrawBackbufferToWindow(MainWindow, Renderer, &OutputData);
         u64 PostUpdateCycles = _rdtsc();
         printf("Cycles drawing backbuffer: %lld\n", PostUpdateCycles - PreUpdateCycles);

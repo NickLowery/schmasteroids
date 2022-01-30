@@ -33,20 +33,21 @@ struct _game_memory;
 struct _memory_arena;
 
 
-// Windowsdebug stuff
+// Platform debug and intrinsic stuff
 // TODO: Move this out somewhere to keep things cleaner?
 #include <immintrin.h>
 #if SCHM_SDL
 #include <emmintrin.h>
 #else
 #include <windows.h>
-#endif
 #if DEBUG_BUILD
 #include <intrin.h>
+// TODO: Is this being used somehow?
 #pragma intrinsic(__rdtsc)
 LARGE_INTEGER _DEBUGPerformanceFrequency;
 bool _Junk_ = QueryPerformanceFrequency(&_DEBUGPerformanceFrequency);
 static float DEBUGPerfFrequency = (float)_DEBUGPerformanceFrequency.QuadPart;
+#endif
 #endif
 
 #include "schmasteroids_math.h"
