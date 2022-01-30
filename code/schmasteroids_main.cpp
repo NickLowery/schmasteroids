@@ -15,7 +15,6 @@
 #include "schmasteroids_render_benchmark.h"
 #endif
 #if DEBUG_BUILD
-#include "schmasteroids_editor.h"
 #include "schmasteroids_editor.cpp"
 #endif
 
@@ -788,7 +787,7 @@ ExplodeAsteroid(asteroid* Exploding, game_state *GameState, metagame_state *Meta
 internal void
 MoveAsteroids(float SecondsElapsed, game_state *GameState) 
 {
-    for (int AIndex = 0; AIndex < ArrayCount(GameState->Asteroids); AIndex++) {
+    for (u32 AIndex = 0; AIndex < (u32)ArrayCount(GameState->Asteroids); AIndex++) {
         if (GameState->Asteroids[AIndex].O.Exists) {
             MoveObject(&(GameState->Asteroids[AIndex].O), SecondsElapsed, GameState);
         }
@@ -798,7 +797,7 @@ MoveAsteroids(float SecondsElapsed, game_state *GameState)
 internal void
 MoveShots(float SecondsElapsed, game_state *GameState)
 {
-    for (int SIndex = 0; SIndex < ArrayCount(GameState->Shots); SIndex++) {
+    for (u32 SIndex = 0; SIndex < (u32)ArrayCount(GameState->Shots); SIndex++) {
         particle *ThisShot = &GameState->Shots[SIndex];
         if (ThisShot->Exists) {
             if (UpdateAndCheckTimer(&ThisShot->SecondsToLive, SecondsElapsed)) {
@@ -819,7 +818,7 @@ internal void
 MoveParticles(float SecondsElapsed, game_state *GameState)
 {
     // Move ungrouped particles
-    for (int PIndex = 0; PIndex < ArrayCount(GameState->Particles); PIndex++) {
+    for (u32 PIndex = 0; PIndex < (u32)ArrayCount(GameState->Particles); PIndex++) {
         particle *ThisParticle = &GameState->Particles[PIndex];
         if (ThisParticle->Exists) {
             if (UpdateAndCheckTimer(&ThisParticle->SecondsToLive, SecondsElapsed)) {

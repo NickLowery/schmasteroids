@@ -13,6 +13,10 @@ typedef struct _output_data {
     i32 Pitch;
 } output_data;
 
+typedef struct _linux_game_code {
+
+} linux_game_code;
+
 #define HANDLE_KEY_EVENT(KeyEvent, Button) \
     (Button).IsDown = ((KeyEvent).state == SDL_PRESSED);
 
@@ -82,7 +86,7 @@ int main(int argc, char *argv[])
     // Timing set-up
     u64 PerfFrequency = SDL_GetPerformanceFrequency();
     float TargetSecondsPerFrame = 1.0f / (float)TARGETFPS;
-    u64 LastPreUpdateCounter = SDL_GetPerformanceCounter();
+    //u64 LastPreUpdateCounter = SDL_GetPerformanceCounter();
 
     // Memory
 #if DEBUG_BUILD
@@ -120,7 +124,7 @@ int main(int argc, char *argv[])
 
     bool32 ShouldQuit = false;
     while(!ShouldQuit) {
-        for(int KeyIndex = 0; KeyIndex < ArrayCount(ThisInput->Keyboard.Keys); KeyIndex++) {
+        for(u32 KeyIndex = 0; KeyIndex < (u32)ArrayCount(ThisInput->Keyboard.Keys); KeyIndex++) {
             ThisInput->Keyboard.Keys[KeyIndex].IsDown = 
                 ThisInput->Keyboard.Keys[KeyIndex].WasDown =
                 LastInput->Keyboard.Keys[KeyIndex].IsDown;
@@ -184,7 +188,7 @@ int main(int argc, char *argv[])
         // TODO: Update the game when we have game code!!!
         SDLDrawBackbufferToWindow(MainWindow, Renderer, &OutputData);
         u64 PostUpdateCycles = _rdtsc();
-        printf("Cycles drawing backbuffer: %lld\n", PostUpdateCycles - PreUpdateCycles);
+        printf("Cycles drawing backbuffer: %lu\n", PostUpdateCycles - PreUpdateCycles);
         u64 LoopEndCounter = SDL_GetPerformanceCounter();
         // TODO: Is it better to do this in u64?
         float SecondsInUpdate = (float)(LoopEndCounter - PreUpdateCounter) /

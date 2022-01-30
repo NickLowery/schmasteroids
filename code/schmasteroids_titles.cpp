@@ -37,7 +37,6 @@ UpdateAndDrawLevelStartScreen(metagame_state *Metagame, render_buffer *Renderer,
     v2 SecondLineMinCorner = CenterPoint + 
         V2(-(GlyphDim.X / 2.0f * StringLength(Metagame->LevelNumberString)),
                 GlyphDim.Y * 0.25f);
-    color TextColor = Color(0xFF8888FF);
 
     PrintFromMinCornerAndGlyphDim(Renderer, Metagame, &Light,
             "level", FirstLineMinCorner, GlyphDim);

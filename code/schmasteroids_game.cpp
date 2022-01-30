@@ -1,7 +1,7 @@
 internal void
 PushAsteroids(render_buffer *Renderer, game_state *GameState, float Alpha = 1.0f)
 {
-    for (int AIndex = 0; AIndex < ArrayCount(GameState->Asteroids); AIndex++) {
+    for (u32 AIndex = 0; AIndex < (u32)ArrayCount(GameState->Asteroids); AIndex++) {
         asteroid *A = GameState->Asteroids + AIndex;
         if (A->O.Exists) {
             PushObject(Renderer, &A->O, Alpha);
@@ -179,7 +179,8 @@ UpdateAndDrawGameplay(game_state *GameState, render_buffer *Renderer, game_input
             v2 OldTailPos = MapFromObjectPosition(GameState->Ship.Vertices[2], GameState->Ship);
             MovePosition(&GameState->Ship.Position, dPos, GameState);
             GameState->Ship.Heading += GameState->Ship.Spin * dTime;
-            v2 NewTailPos = MapFromObjectPosition(GameState->Ship.Vertices[2], GameState->Ship);
+            // TODO: Use this to have an arc of particles?
+            // v2 NewTailPos = MapFromObjectPosition(GameState->Ship.Vertices[2], GameState->Ship);
             float RocketParticlesPerSecond = 180.0f;
             i32 RocketParticles = i32(RocketParticlesPerSecond * dTime);
             for (i32 ParticleI = 0;
@@ -218,7 +219,7 @@ UpdateAndDrawGameplay(game_state *GameState, render_buffer *Renderer, game_input
         // Look for opportunity to respawn ship
         bool32 CenterIsClear = true;
         float MinimumDistanceSq = Square(AsteroidProps[2].Radius * 2.0f);
-        for (int AIndex = 0; AIndex < ArrayCount(GameState->Asteroids); AIndex++) {
+        for (u32 AIndex = 0; AIndex < (u32)ArrayCount(GameState->Asteroids); AIndex++) {
             asteroid *A = GameState->Asteroids + AIndex;
             if (A->O.Exists && LengthSq(ScreenCenter - A->O.Position) < MinimumDistanceSq) {
                 CenterIsClear = false;
@@ -300,13 +301,13 @@ UpdateAndDrawGameplay(game_state *GameState, render_buffer *Renderer, game_input
 
     BENCH_START_COUNTING_CYCLES_USECONDS(DrawGame)
     PushAsteroids(Renderer, GameState, SceneAlpha);
-    for (int SIndex = 0; SIndex < ArrayCount(GameState->Shots); SIndex++) {
+    for (u32 SIndex = 0; SIndex < (u32)ArrayCount(GameState->Shots); SIndex++) {
         particle *ThisParticle = &GameState->Shots[SIndex];
         if (ThisParticle->Exists) {
             PushParticle(Renderer, ThisParticle, SceneAlpha);
         }
     }
-    for (int PIndex = 0; PIndex < ArrayCount(GameState->Particles); PIndex++) {
+    for (u32 PIndex = 0; PIndex < (u32)ArrayCount(GameState->Particles); PIndex++) {
         particle* P = &GameState->Particles[PIndex];
         if (P->Exists) {
             PushParticle(Renderer, P, SceneAlpha);
