@@ -48,14 +48,17 @@ internal void ResizeBackbuffer(SDL_Renderer *Renderer, output_data *OutputData, 
                                 SDL_TEXTUREACCESS_STREAMING,
                                 Width,
                                 Height);
-    OutputData->FrameBuffer.Width = Width; 
-    OutputData->FrameBuffer.Height = Height;
-    OutputData->FrameBuffer.MemorySize = (Width * Height * 4);
+    i32 AdjustedWidth = RoundDownToMultipleOf(4,Width);
+    i32 AdjustedHeight = RoundDownToMultipleOf(4,Height);
+    OutputData->FrameBuffer.Width = AdjustedWidth; 
+    OutputData->FrameBuffer.Height = AdjustedHeight;
+    OutputData->FrameBuffer.Pitch = AdjustedWidth * 4;
+    OutputData->FrameBuffer.MemorySize = 
+        (OutputData->FrameBuffer.Pitch * AdjustedHeight);
     // TODO: Use mmap? Might not be Mac-compatible.
     // TODO: Error out if malloc fails?
     OutputData->FrameBuffer.Memory = (u8*)malloc(OutputData->FrameBuffer.MemorySize);
     OutputData->FrameBuffer.BytesPerPixel = 4;
-    OutputData->FrameBuffer.Pitch = Width * 4;
 }
 
 internal void SDLDrawBackbufferToWindow(SDL_Window *Window, SDL_Renderer *Renderer, output_data *OutputData)
@@ -65,6 +68,7 @@ internal void SDLDrawBackbufferToWindow(SDL_Window *Window, SDL_Renderer *Render
     if (SDL_UpdateTexture(OutputData->Texture, 0, 
                       OutputData->FrameBuffer.Memory, OutputData->FrameBuffer.Pitch))
     {
+        printf("Problem with updating texture");
         //TODO: Do something about this error
     }
     SDL_RenderCopy(Renderer, OutputData->Texture, 0, 0);
@@ -437,11 +441,13 @@ int main(int argc, char *argv[])
                 } break;
             }
         }
+        ThisInput->SecondsElapsed = TargetSecondsPerFrame;
 
         u64 PreUpdateCounter = SDL_GetPerformanceCounter();
         u64 PreUpdateCycles = _rdtsc();
 
         if (Game.IsValid) {
+            printf("Updating game\n");
             Game.UpdateAndRender(&OutputData.FrameBuffer, ThisInput, &GameMemory);
         }
 
