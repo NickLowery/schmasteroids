@@ -310,7 +310,8 @@ int main(int argc, char *argv[])
         printf("Error opening audio device\n");
         // TODO: Do something about this error
     }
-
+    SDL_PauseAudio(1);
+    bool32 SoundPlaying = false;
     
     // Timing set-up
     u64 PerfFrequency = SDL_GetPerformanceFrequency();
@@ -449,20 +450,61 @@ int main(int argc, char *argv[])
         if (Game.IsValid) {
             printf("Updating game\n");
             Game.UpdateAndRender(&OutputData.FrameBuffer, ThisInput, &GameMemory);
+            SDLDrawBackbufferToWindow(MainWindow, Renderer, &OutputData);
+
+            u32 Channels = 2;
+            u32 BytesPerSample = 2;
+            u32 BytesPerAFrame = Channels * BytesPerSample;
+            // TODO: I'm getting a really bad resolution of how much 
+            // padding there is, nearly a second's worth. Maybe my 
+            // sound card is just that bad? Maybe ther's some other 
+            // problem? Let's try something like: Figure out a target 
+            // latency, write that to start with... Figure out how much audio we expect to need per frame? Try to adjust on the fly somehow?
+            // TODO: Or, try the other API but I don't like that idea very much.
+            // TODO: David Gow's solution was to have his own ring buffer effectively and use the callback API to fill from that. We could try something like that.
+            // TODO: Testing with a longer latency
+#if 1
+            u32 DesiredPaddingBytes = BytesPerAFrame * 
+                                      GLOBAL_SAMPLES_PER_SECOND;
+#else
+            u32 DesiredPaddingBytes = BytesPerAFrame * 
+                                     (u32)(
+                                         (float)GLOBAL_SAMPLES_PER_SECOND * 
+                                         TargetSecondsPerFrame);
+#endif
+
+            u32 SoundPaddingBytes = SDL_GetQueuedAudioSize(1);
+            u32 BytesToWrite = DesiredPaddingBytes - SoundPaddingBytes;
+            platform_sound_output_buffer SoundBuffer = {};
+            SoundBuffer.AFramesPerSecond = GLOBAL_SAMPLES_PER_SECOND;
+            Assert(BytesToWrite % BytesPerAFrame == 0);
+            SoundBuffer.AFramesToWrite = BytesToWrite / BytesPerAFrame;
+            printf("SoundPaddingBytes = %d\n", SoundPaddingBytes);
+            printf("Writing %d audio frames\n", SoundBuffer.AFramesToWrite);
+            // TODO: Don't do a malloc every frame!
+            SoundBuffer.SampleData = (i16*)malloc(BytesToWrite);
+
+            Game.GetSoundOutput(&SoundBuffer, &GameMemory);
+            SDL_QueueAudio(1, SoundBuffer.SampleData, BytesToWrite);
+
+            free(SoundBuffer.SampleData);
+            if (!SoundPlaying) {
+                SDL_PauseAudio(0);
+                SoundPlaying = true;
+            }
         }
 
         game_input* tempInput = ThisInput;
         ThisInput = LastInput;
         LastInput = tempInput;
 
-        SDLDrawBackbufferToWindow(MainWindow, Renderer, &OutputData);
         u64 PostUpdateCycles = _rdtsc();
-        printf("Cycles in update: %lu\n", PostUpdateCycles - PreUpdateCycles);
+        //printf("Cycles in update: %lu\n", PostUpdateCycles - PreUpdateCycles);
         u64 LoopEndCounter = SDL_GetPerformanceCounter();
         // TODO: Is it better to do this in u64?
         float SecondsInUpdate = (float)(LoopEndCounter - PreUpdateCounter) /
                                 (float)PerfFrequency;
-        printf("Seconds in update: %f\n", SecondsInUpdate);
+        //printf("Seconds in update: %f\n", SecondsInUpdate);
         if (SecondsInUpdate < TargetSecondsPerFrame) {
             u32 TimeToSleep = ((TargetSecondsPerFrame - SecondsInUpdate)*1000) - 1;
             SDL_Delay(TimeToSleep);
