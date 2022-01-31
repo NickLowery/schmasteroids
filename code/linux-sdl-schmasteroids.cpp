@@ -1,6 +1,8 @@
+// TODO: Linux binary distribution stuff!!! Reference https://davidgow.net/handmadepenguin/ch16.html
 #include <SDL.h>
 #include <schmasteroids_main.h>
 #include <sys/mman.h>
+#include <dlfcn.h>
 #define DEFAULT_W 640
 #define DEFAULT_H 480
 #define GLOBAL_SAMPLES_PER_SECOND 48000
@@ -14,7 +16,12 @@ typedef struct _output_data {
 } output_data;
 
 typedef struct _linux_game_code {
-
+    void *SO;
+    game_update_and_render *UpdateAndRender;
+    game_initialize *Initialize;
+    game_get_sound_output *GetSoundOutput;
+    game_seed_prng *SeedRandom;
+    bool32 IsValid;
 } linux_game_code;
 
 #define HANDLE_KEY_EVENT(KeyEvent, Button) \
@@ -49,6 +56,45 @@ internal void SDLDrawBackbufferToWindow(SDL_Window *Window, SDL_Renderer *Render
     }
     SDL_RenderCopy(Renderer, OutputData->Texture, 0, 0);
     SDL_RenderPresent(Renderer);
+}
+
+void * LoadGameFunction(void *SO, const char *FunctionName) {
+    void *Result = dlsym(SO, FunctionName);
+    char *DLErrorOutput = dlerror();
+    if (DLErrorOutput || !Result) {
+        printf("Something went wrong loading %s\n", FunctionName);
+        if (DLErrorOutput) {
+            printf("dlerror returned: %s\n", DLErrorOutput);
+        }
+        exit(-1);
+        // TODO: Something else to handle the error?
+    }
+    return Result;
+}
+
+linux_game_code LoadGameCode() {
+    linux_game_code Result = {};
+    char SOPath[] = "build/schmasteroids.so";
+    Result.SO = dlopen(SOPath, RTLD_LAZY);
+    if (Result.SO) {
+        printf("SO Loaded\n");
+        dlerror();
+        Result.GetSoundOutput = (game_get_sound_output*)
+            LoadGameFunction(Result.SO, "GameGetSoundOutput");
+        Result.Initialize = (game_initialize*)
+            LoadGameFunction(Result.SO, "GameInitialize");
+        Result.UpdateAndRender = (game_update_and_render*)
+            LoadGameFunction(Result.SO, "GameUpdateAndRender");
+        Result.SeedRandom = (game_seed_prng*)
+            LoadGameFunction(Result.SO, "SeedRandom");
+        Result.IsValid = true;
+        return Result;
+    } else {
+        printf("load failed\n");
+        char *DLErrorOutput = dlerror();
+        printf("dlerror returned: %s\n", DLErrorOutput);
+        exit(-1);
+    }
 }
 
 int main(int argc, char *argv[])
@@ -86,7 +132,16 @@ int main(int argc, char *argv[])
     // Timing set-up
     u64 PerfFrequency = SDL_GetPerformanceFrequency();
     float TargetSecondsPerFrame = 1.0f / (float)TARGETFPS;
-    //u64 LastPreUpdateCounter = SDL_GetPerformanceCounter();
+
+    // Load game code!
+    char SOPath[] = "./schmasteroids_main.so";
+    linux_game_code Game = LoadGameCode();
+
+    // Seed PRNG
+    u64 RandomSeedCounter = SDL_GetPerformanceCounter();
+    u64 U32Mask = (u64)UINT32_MAX;
+    u32 RandomSeed = (u32)(RandomSeedCounter & U32Mask);
+    Game.SeedRandom(RandomSeed);
 
     // Memory
 #if DEBUG_BUILD
@@ -108,7 +163,6 @@ int main(int argc, char *argv[])
     GameMemory.TransientStorage = (u8*)GameMemory.PermanentStorage + 
                                   GameMemory.PermanentStorageSize;
 
-    // TODO: Load game code!
 
     // Initialize input
     game_input GameInputs[2];
