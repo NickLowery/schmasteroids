@@ -464,7 +464,8 @@ int main(int argc, char *argv[])
                                 (float)PerfFrequency;
         printf("Seconds in update: %f\n", SecondsInUpdate);
         if (SecondsInUpdate < TargetSecondsPerFrame) {
-            // TODO: Sleep
+            u32 TimeToSleep = ((TargetSecondsPerFrame - SecondsInUpdate)*1000) - 1;
+            SDL_Delay(TimeToSleep);
         }
         // TODO: Use SDL_QueueAudio to queue some audio!
     }
