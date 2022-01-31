@@ -244,6 +244,7 @@ typedef PLATFORM_GET_WAV_LOAD_INFO(platform_get_wav_load_info);
 #define PLATFORM_LOAD_WAV(name) void name(const char *Filename, void* Memory, platform_wav_load_info Info)
 typedef PLATFORM_LOAD_WAV(platform_load_wav);
 
+// TODO: This seems to be unused
 #define PLATFORM_FREE_FILE_MEMORY(name) void name(void *Memory)
 typedef PLATFORM_FREE_FILE_MEMORY(platform_free_file_memory);
 

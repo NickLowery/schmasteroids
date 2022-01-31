@@ -2,12 +2,14 @@
 #include <SDL.h>
 #include <schmasteroids_main.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <dlfcn.h>
 #define DEFAULT_W 640
 #define DEFAULT_H 480
 #define GLOBAL_SAMPLES_PER_SECOND 48000
 #define TARGETFPS 30
 
+static bool32 GlobalRunning;
 
 typedef struct _output_data {
     SDL_Texture *Texture;
@@ -26,6 +28,11 @@ typedef struct _linux_game_code {
 
 #define HANDLE_KEY_EVENT(KeyEvent, Button) \
     (Button).IsDown = ((KeyEvent).state == SDL_PRESSED);
+
+void ErrorOut(i32 Code) {
+    SDL_Quit();
+    exit(-1);
+}
 
 internal void ResizeBackbuffer(SDL_Renderer *Renderer, output_data *OutputData, i32 Width, i32 Height)
 {
@@ -58,6 +65,133 @@ internal void SDLDrawBackbufferToWindow(SDL_Window *Window, SDL_Renderer *Render
     SDL_RenderPresent(Renderer);
 }
 
+PLATFORM_LOAD_WAV(LinuxSDLLoadWav)
+{
+    // TODO: Implement
+}
+PLATFORM_GET_WAV_LOAD_INFO(LinuxSDLGetWavLoadInfo) 
+{
+    platform_wav_load_info Result = {};
+    FILE* File = fopen(Filename, "r");
+    if (!File) 
+    {
+        printf("Couldn't open wav file: %s\n", Filename);
+        ErrorOut(-1);
+    }
+
+    wav_header WavHeader = {};
+    wav_chunk Chunk = {};
+    size_t ReadResult = fread(&WavHeader, sizeof(WavHeader), 1, File);
+    if(ReadResult != 1) 
+    {
+        printf("Couldn't read file: %s\n", Filename);
+        ErrorOut(-1);
+    } 
+    Result.StartOfSamplesInFile += sizeof(WavHeader);
+    Assert(strncmp(WavHeader.ChunkHeader.ckID, "RIFF", 4) == 0);
+    Assert(strncmp(WavHeader.WAVEID, "WAVE", 4) == 0);
+
+    //ReadFile(FileHandle, &Chunk, sizeof(Chunk.ChunkHeader), &BytesRead, 0);
+    ReadResult = fread(&Chunk, sizeof(Chunk.ChunkHeader), 1, File);
+    if(ReadResult != 1) 
+    {
+        printf("Couldn't read file: %s\n", Filename);
+        ErrorOut(-1);
+    } 
+    Result.StartOfSamplesInFile += sizeof(Chunk.ChunkHeader);
+    Assert(strncmp(Chunk.ChunkHeader.ckID, "fmt ", 4) == 0);
+    //ReadFile(FileHandle, &Chunk.wFormatTag, Chunk.ChunkHeader.ckSize, &BytesRead, 0);
+    ReadResult = fread(&Chunk.wFormatTag, Chunk.ChunkHeader.ckSize, 1, File);
+    if(ReadResult != 1) 
+    {
+        printf("Couldn't read file: %s\n", Filename);
+        ErrorOut(-1);
+    } 
+    Result.StartOfSamplesInFile += Chunk.ChunkHeader.ckSize;
+    Assert(Chunk.wFormatTag == 1);
+    Assert(Chunk.nChannels <= 2);
+    Result.Channels = Chunk.nChannels;
+    Assert(Chunk.nSamplesPerSec == GlobalSamplesPerSecond);
+    Assert(Chunk.wBitsPerSample == 16);
+
+    //ReadFile(FileHandle, &Chunk, sizeof(Chunk.ChunkHeader), &BytesRead, 0);
+    ReadResult = fread(&Chunk, sizeof(Chunk.ChunkHeader), 1, File);
+    if(ReadResult != 1) 
+    {
+        printf("Couldn't read file: %s\n", Filename);
+        ErrorOut(-1);
+    } 
+    Result.StartOfSamplesInFile += sizeof(Chunk.ChunkHeader);
+    while(strncmp(Chunk.ChunkHeader.ckID, "data", 4)) {
+        u32 BytesToSkip = Chunk.ChunkHeader.ckSize;
+        i32 SeekResult = fseek(File, BytesToSkip, SEEK_CUR);
+        if (SeekResult) {
+            printf("Couldn't read file: %s\n", Filename);
+            ErrorOut(-1);
+        }
+        Result.StartOfSamplesInFile += BytesToSkip;
+
+        //ReadFile(FileHandle, &Chunk, sizeof(Chunk.ChunkHeader), &BytesRead, 0);
+        ReadResult = fread(&Chunk, sizeof(Chunk.ChunkHeader), 1, File);
+        if(ReadResult != 1) 
+        {
+            printf("Couldn't read file: %s\n", Filename);
+            ErrorOut(-1);
+        } 
+        Result.StartOfSamplesInFile += sizeof(Chunk.ChunkHeader);
+    }
+    Result.SampleByteCount = Chunk.ChunkHeader.ckSize;
+    fclose(File);
+    
+    return Result;
+}
+PLATFORM_DEBUG_READ_FILE(LinuxSDLDebugReadFile)
+{
+    u32 BytesRead = 0;
+    FILE* File = fopen(Filename, "r");
+    if (!File) 
+    {
+        printf("Couldn't open file: %s\n", Filename);
+        return 0;
+    }
+    else {
+        struct stat FileStatus;
+        i32 StatResult = stat(Filename, &FileStatus);
+        if (!StatResult) {
+            off_t FileSize = FileStatus.st_size;
+            u32 FileSize32 = (u32)FileSize;
+            Assert(FileSize32 == FileSize);
+            Assert(ReadSize <= FileSize32);
+            Assert(Memory);
+
+            size_t ReadResult = fread(Memory, ReadSize, 1, File);
+            if(ReadResult != 1) { 
+                printf("Trouble reading file: %s\n", Filename);
+            } else {
+                BytesRead = ReadSize;
+            }
+        }
+        fclose(File);
+        return BytesRead;
+    }
+}
+PLATFORM_FREE_FILE_MEMORY(LinuxSDLFreeFileMemory) 
+{
+    if (Memory) {
+        free(Memory);
+    }
+}
+PLATFORM_DEBUG_SAVE_FRAMEBUFFER_AS_BMP(LinuxSDLDebugSaveFramebufferAsBMP)
+{
+    // TODO: Implement this
+}
+PLATFORM_QUIT(LinuxSDLQuit)
+{
+    GlobalRunning = false;
+}
+
+
+
 void * LoadGameFunction(void *SO, const char *FunctionName) {
     void *Result = dlsym(SO, FunctionName);
     char *DLErrorOutput = dlerror();
@@ -66,7 +200,7 @@ void * LoadGameFunction(void *SO, const char *FunctionName) {
         if (DLErrorOutput) {
             printf("dlerror returned: %s\n", DLErrorOutput);
         }
-        exit(-1);
+        ErrorOut(-1);
         // TODO: Something else to handle the error?
     }
     return Result;
@@ -88,18 +222,17 @@ linux_game_code LoadGameCode() {
         Result.SeedRandom = (game_seed_prng*)
             LoadGameFunction(Result.SO, "SeedRandom");
         Result.IsValid = true;
-        return Result;
     } else {
         printf("load failed\n");
         char *DLErrorOutput = dlerror();
         printf("dlerror returned: %s\n", DLErrorOutput);
-        exit(-1);
+        ErrorOut(-1);
     }
+    return Result;
 }
 
 int main(int argc, char *argv[])
 {
-    //SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "SDL Schmasteroids", "TEST MESSAGE", 0);
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0)
         // TODO: Possibly use SDL_AudioInit() to control what driver we use?
     {
@@ -163,6 +296,9 @@ int main(int argc, char *argv[])
     GameMemory.TransientStorage = (u8*)GameMemory.PermanentStorage + 
                                   GameMemory.PermanentStorageSize;
 
+    // Platform functions
+    // TODO: Fill these in!
+
 
     // Initialize input
     game_input GameInputs[2];
@@ -176,8 +312,8 @@ int main(int argc, char *argv[])
     Assert(&(ThisInput->DebugKeys.Terminator) == &(ThisInput->DebugKeys.Keys[ArrayCount(ThisInput->DebugKeys.Keys)-1]));
 #endif
 
-    bool32 ShouldQuit = false;
-    while(!ShouldQuit) {
+    GlobalRunning = true;
+    while(GlobalRunning) {
         for(u32 KeyIndex = 0; KeyIndex < (u32)ArrayCount(ThisInput->Keyboard.Keys); KeyIndex++) {
             ThisInput->Keyboard.Keys[KeyIndex].IsDown = 
                 ThisInput->Keyboard.Keys[KeyIndex].WasDown =
@@ -189,7 +325,7 @@ int main(int argc, char *argv[])
             switch(Event.type) {
                 case SDL_QUIT: {
                 printf("SDL_QUIT\n");
-                ShouldQuit = true;
+                GlobalRunning = false;
                 } break;
                 case SDL_WINDOWEVENT: {
                     switch(Event.window.event) {
