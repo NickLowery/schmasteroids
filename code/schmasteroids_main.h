@@ -155,6 +155,7 @@ typedef struct {
     i32 MemorySize;
     u8 *Memory;
 } platform_framebuffer;
+// TODO: Should be called game_framebuffer for consistency?
 
 typedef struct {
     bool32 IsDown;

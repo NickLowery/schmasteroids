@@ -4,17 +4,18 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <dlfcn.h>
+#include <unistd.h>
 #define DEFAULT_W 640
 #define DEFAULT_H 480
 #define GLOBAL_SAMPLES_PER_SECOND 48000
 #define TARGETFPS 30
 
 static bool32 GlobalRunning;
+static platform_framebuffer GlobalBackbuffer;
 
 typedef struct _output_data {
     SDL_Texture *Texture;
-    void *Pixels;
-    i32 Pitch;
+    platform_framebuffer FrameBuffer;
 } output_data;
 
 typedef struct _linux_game_code {
@@ -39,17 +40,22 @@ internal void ResizeBackbuffer(SDL_Renderer *Renderer, output_data *OutputData, 
     if (OutputData->Texture) {
         SDL_DestroyTexture(OutputData->Texture);
     }
-    if (OutputData->Pixels) {
-        free(OutputData->Pixels);
+    if (OutputData->FrameBuffer.Memory) {
+        free(OutputData->FrameBuffer.Memory);
     }
     OutputData->Texture = SDL_CreateTexture(Renderer,
                                 SDL_PIXELFORMAT_ARGB8888,
                                 SDL_TEXTUREACCESS_STREAMING,
                                 Width,
                                 Height);
+    OutputData->FrameBuffer.Width = Width; 
+    OutputData->FrameBuffer.Height = Height;
+    OutputData->FrameBuffer.MemorySize = (Width * Height * 4);
     // TODO: Use mmap? Might not be Mac-compatible.
-    OutputData->Pixels = malloc(Width * Height * 4);
-    OutputData->Pitch = Width * 4;
+    // TODO: Error out if malloc fails?
+    OutputData->FrameBuffer.Memory = (u8*)malloc(OutputData->FrameBuffer.MemorySize);
+    OutputData->FrameBuffer.BytesPerPixel = 4;
+    OutputData->FrameBuffer.Pitch = Width * 4;
 }
 
 internal void SDLDrawBackbufferToWindow(SDL_Window *Window, SDL_Renderer *Renderer, output_data *OutputData)
@@ -57,7 +63,7 @@ internal void SDLDrawBackbufferToWindow(SDL_Window *Window, SDL_Renderer *Render
     // TODO: Use SDL_LockTexture? Supposedly faster. Just write directly to
     // what it returns?
     if (SDL_UpdateTexture(OutputData->Texture, 0, 
-                      OutputData->Pixels, OutputData->Pitch))
+                      OutputData->FrameBuffer.Memory, OutputData->FrameBuffer.Pitch))
     {
         //TODO: Do something about this error
     }
@@ -67,10 +73,41 @@ internal void SDLDrawBackbufferToWindow(SDL_Window *Window, SDL_Renderer *Render
 
 PLATFORM_LOAD_WAV(LinuxSDLLoadWav)
 {
-    // TODO: Implement
+    FILE* File = fopen(Filename, "r");
+    if (!File) 
+    {
+        printf("Couldn't open wav file: %s\n", Filename);
+        ErrorOut(-1);
+    }
+    wav_chunk_header Header = {};
+    i32 SeekResult = fseek(File, Info.StartOfSamplesInFile - sizeof(Header), SEEK_CUR);
+    if (SeekResult) {
+        printf("Couldn't read wav file: %s\n", Filename);
+        ErrorOut(-1);
+    }
+    size_t ReadResult = fread(&Header, sizeof(Header), 1, File);
+    if(ReadResult != 1) 
+    {
+        printf("Couldn't read wav file: %s\n", Filename);
+        ErrorOut(-1);
+    } 
+    Assert(strncmp(Header.ckID, "data", 4) == 0);
+    Assert(Header.ckSize == Info.SampleByteCount);
+    ReadResult = fread(Memory, Info.SampleByteCount, 1, File);
+    if(ReadResult != 1) 
+    {
+        printf("Couldn't read wav file: %s\n", Filename);
+        ErrorOut(-1);
+    } 
+    fclose(File);
+
 }
 PLATFORM_GET_WAV_LOAD_INFO(LinuxSDLGetWavLoadInfo) 
 {
+    u32 PathLength = 128;
+    char Dir[PathLength];
+    getcwd(Dir, PathLength);
+    printf("Looking in %s\n", Dir);
     platform_wav_load_info Result = {};
     FILE* File = fopen(Filename, "r");
     if (!File) 
@@ -175,6 +212,10 @@ PLATFORM_DEBUG_READ_FILE(LinuxSDLDebugReadFile)
         return BytesRead;
     }
 }
+PLATFORM_DEBUG_WRITE_FILE(LinuxSDLDebugWriteFile)
+{
+    // TODO: Implement
+}
 PLATFORM_FREE_FILE_MEMORY(LinuxSDLFreeFileMemory) 
 {
     if (Memory) {
@@ -190,6 +231,10 @@ PLATFORM_QUIT(LinuxSDLQuit)
     GlobalRunning = false;
 }
 
+PLATFORM_TOGGLE_FULLSCREEN(LinuxSDLToggleFullScreen)
+{
+    // TODO: Implement this!
+}
 
 
 void * LoadGameFunction(void *SO, const char *FunctionName) {
@@ -261,6 +306,7 @@ int main(int argc, char *argv[])
         printf("Error opening audio device\n");
         // TODO: Do something about this error
     }
+
     
     // Timing set-up
     u64 PerfFrequency = SDL_GetPerformanceFrequency();
@@ -270,11 +316,11 @@ int main(int argc, char *argv[])
     char SOPath[] = "./schmasteroids_main.so";
     linux_game_code Game = LoadGameCode();
 
-    // Seed PRNG
-    u64 RandomSeedCounter = SDL_GetPerformanceCounter();
-    u64 U32Mask = (u64)UINT32_MAX;
-    u32 RandomSeed = (u32)(RandomSeedCounter & U32Mask);
-    Game.SeedRandom(RandomSeed);
+    // Move into data directory
+    if (chdir("data")) {
+        printf("Couldn't change directory to data\n");
+        ErrorOut(-1);
+    }
 
     // Memory
 #if DEBUG_BUILD
@@ -296,9 +342,25 @@ int main(int argc, char *argv[])
     GameMemory.TransientStorage = (u8*)GameMemory.PermanentStorage + 
                                   GameMemory.PermanentStorageSize;
 
-    // Platform functions
-    // TODO: Fill these in!
+    // Create pointers to platform services
+    GameMemory.PlatformLoadWav = &LinuxSDLLoadWav;
+    GameMemory.PlatformGetWavLoadInfo = &LinuxSDLGetWavLoadInfo;
+    GameMemory.PlatformFreeFileMemory = &LinuxSDLFreeFileMemory;
+    GameMemory.PlatformDebugReadFile = &LinuxSDLDebugReadFile;
+    GameMemory.PlatformDebugWriteFile = &LinuxSDLDebugWriteFile;
+    GameMemory.PlatformDebugSaveFramebufferAsBMP = &LinuxSDLDebugSaveFramebufferAsBMP;
+    GameMemory.PlatformQuit = &LinuxSDLQuit;
+    GameMemory.PlatformToggleFullscreen = &LinuxSDLToggleFullScreen;
 
+    if (Game.IsValid) {
+        // Seed PRNG
+        u64 RandomSeedCounter = SDL_GetPerformanceCounter();
+        u64 U32Mask = (u64)UINT32_MAX;
+        u32 RandomSeed = (u32)(RandomSeedCounter & U32Mask);
+        Game.SeedRandom(RandomSeed);
+        //Initialize game
+        Game.Initialize(&OutputData.FrameBuffer, &GameMemory);
+    }
 
     // Initialize input
     game_input GameInputs[2];
@@ -314,6 +376,8 @@ int main(int argc, char *argv[])
 
     GlobalRunning = true;
     while(GlobalRunning) {
+        // TODO: IMPORTANT! Add hotloading of SO
+        
         for(u32 KeyIndex = 0; KeyIndex < (u32)ArrayCount(ThisInput->Keyboard.Keys); KeyIndex++) {
             ThisInput->Keyboard.Keys[KeyIndex].IsDown = 
                 ThisInput->Keyboard.Keys[KeyIndex].WasDown =
@@ -373,12 +437,21 @@ int main(int argc, char *argv[])
                 } break;
             }
         }
+
         u64 PreUpdateCounter = SDL_GetPerformanceCounter();
         u64 PreUpdateCycles = _rdtsc();
-        // TODO: Update the game when we have game code!!!
+
+        if (Game.IsValid) {
+            Game.UpdateAndRender(&OutputData.FrameBuffer, ThisInput, &GameMemory);
+        }
+
+        game_input* tempInput = ThisInput;
+        ThisInput = LastInput;
+        LastInput = tempInput;
+
         SDLDrawBackbufferToWindow(MainWindow, Renderer, &OutputData);
         u64 PostUpdateCycles = _rdtsc();
-        printf("Cycles drawing backbuffer: %lu\n", PostUpdateCycles - PreUpdateCycles);
+        printf("Cycles in update: %lu\n", PostUpdateCycles - PreUpdateCycles);
         u64 LoopEndCounter = SDL_GetPerformanceCounter();
         // TODO: Is it better to do this in u64?
         float SecondsInUpdate = (float)(LoopEndCounter - PreUpdateCounter) /

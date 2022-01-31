@@ -823,6 +823,8 @@ WinMain(HINSTANCE Instance,
                     MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
             WinState.GameMemory.TransientStorage = (char*)WinState.GameMemory.PermanentStorage +
                 WinState.GameMemory.PermanentStorageSize;
+
+            // Create pointers to platform services
             WinState.GameMemory.PlatformLoadWav = &Win32LoadWav;
             WinState.GameMemory.PlatformGetWavLoadInfo = &Win32GetWavLoadInfo;
             WinState.GameMemory.PlatformFreeFileMemory = &Win32FreeFileMemory;
@@ -836,6 +838,7 @@ WinMain(HINSTANCE Instance,
                 // VirtualAlloc sets memory to 0 per MSDN
                 WinState.GameMemory.IsSetToZero = true;
 
+                // Get game code
                 win32_exe_info EXEInfo = {};
                 DWORD GMFNResult = GetModuleFileNameA(0, EXEInfo.EXEFilename, MAX_PATH);
                 if (GMFNResult != MAX_PATH) {
