@@ -305,7 +305,7 @@ int main(int argc, char *argv[])
     AudioSpec.freq = GLOBAL_SAMPLES_PER_SECOND;
     AudioSpec.format = AUDIO_S16LSB;
     AudioSpec.channels = 2;
-    AudioSpec.samples = 32768;
+    AudioSpec.samples = 1024;
     if(SDL_OpenAudio(&AudioSpec, 0)) {
         printf("Error opening audio device\n");
         // TODO: Do something about this error
@@ -398,19 +398,25 @@ int main(int argc, char *argv[])
                 } break;
                 case SDL_WINDOWEVENT: {
                     switch(Event.window.event) {
+                        case SDL_WINDOWEVENT_SIZE_CHANGED: {
+                            // TODO: On Windows, the gray bars and figuring out what portion of the window to blit to 
+                            // are figured out here. I was mis-remembering and thinking that was handled by game code.
+                            // Possibly it should be?
+                            printf("SDL_WINDOWEVENT_SIZE_CHANGED\n");
+                            i32 Width, Height;
+                            SDL_GetWindowSize(MainWindow, &Width, &Height);
+                            ResizeBackbuffer(Renderer, &OutputData, Width, Height);
+                        } break;
                         case SDL_WINDOWEVENT_RESIZED: {
-                        printf("SDL_WINDOWEVENT_RESIZED (%d x %d)\n", 
-                                Event.window.data1,
-                                Event.window.data2);
-                        i32 Width, Height;
-                        SDL_GetWindowSize(MainWindow, &Width, &Height);
-                        ResizeBackbuffer(Renderer, &OutputData, Width, Height);
+                            printf("SDL_WINDOWEVENT_RESIZED (%d x %d)\n", 
+                                    Event.window.data1,
+                                    Event.window.data2);
                         } break;
                         case SDL_WINDOWEVENT_EXPOSED: {
-                        // TODO: Get window ID from the event in case we ever 
-                        // have more than one window? Doesn't seem likely 
-                        // that we would want to.
-                        SDLDrawBackbufferToWindow(MainWindow, Renderer, &OutputData);
+                            // TODO: Get window ID from the event in case we ever 
+                            // have more than one window? Doesn't seem likely 
+                            // that we would want to.
+                            SDLDrawBackbufferToWindow(MainWindow, Renderer, &OutputData);
                         } break;
                     }
                 } break;
@@ -462,19 +468,35 @@ int main(int argc, char *argv[])
             // latency, write that to start with... Figure out how much audio we expect to need per frame? Try to adjust on the fly somehow?
             // TODO: Or, try the other API but I don't like that idea very much.
             // TODO: David Gow's solution was to have his own ring buffer effectively and use the callback API to fill from that. We could try something like that.
-            // TODO: Testing with a longer latency
-#if 1
-            u32 DesiredPaddingBytes = BytesPerAFrame * 
-                                      GLOBAL_SAMPLES_PER_SECOND;
-#else
-            u32 DesiredPaddingBytes = BytesPerAFrame * 
+            u32 ExpectedBytesPerVideoFrame = BytesPerAFrame * 
                                      (u32)(
                                          (float)GLOBAL_SAMPLES_PER_SECOND * 
                                          TargetSecondsPerFrame);
-#endif
 
+            // NOTE: It appears that the resolution I get from this call depends on the size of buffer that I ask for in OpenAudio().
+            // With 4096 the resolution was very poor and latency was high, with 1024 I'm getting reasonable results so far.
             u32 SoundPaddingBytes = SDL_GetQueuedAudioSize(1);
-            u32 BytesToWrite = DesiredPaddingBytes - SoundPaddingBytes;
+            
+#if 0
+            u32 DesiredPaddingBytes = ExpectedBytesPerVideoFrame * 2;
+            u32 BytesToWrite;
+            if (ExpectedBytesPerVideoFrame > SoundPaddingBytes) {
+                BytesToWrite = DesiredPaddingBytes - SoundPaddingBytes;
+            } else if (SoundPaddingBytes > DesiredPaddingBytes + ExpectedBytesPerVideoFrame) {
+                BytesToWrite = 0;
+            } else {
+                // Write the amount we expect to have to write
+                BytesToWrite = ExpectedBytesPerVideoFrame;
+            }
+#else
+            u32 DesiredPaddingBytes = ExpectedBytesPerVideoFrame * 2;
+            u32 BytesToWrite;
+            if (DesiredPaddingBytes > SoundPaddingBytes) {
+                BytesToWrite = DesiredPaddingBytes - SoundPaddingBytes;
+            } else {
+                BytesToWrite = 0;
+            }
+#endif
             platform_sound_output_buffer SoundBuffer = {};
             SoundBuffer.AFramesPerSecond = GLOBAL_SAMPLES_PER_SECOND;
             Assert(BytesToWrite % BytesPerAFrame == 0);
@@ -509,7 +531,6 @@ int main(int argc, char *argv[])
             u32 TimeToSleep = ((TargetSecondsPerFrame - SecondsInUpdate)*1000) - 1;
             SDL_Delay(TimeToSleep);
         }
-        // TODO: Use SDL_QueueAudio to queue some audio!
     }
 
 
