@@ -5,8 +5,8 @@
 #include <sys/stat.h>
 #include <dlfcn.h>
 #include <unistd.h>
-#define DEFAULT_W 640
-#define DEFAULT_H 480
+#define DEFAULT_BACKBUFFERW 640
+#define DEFAULT_BACKBUFFERH 480
 #define GLOBAL_SAMPLES_PER_SECOND 48000
 #define TARGETFPS 30
 
@@ -16,6 +16,7 @@ static platform_framebuffer GlobalBackbuffer;
 typedef struct _output_data {
     SDL_Texture *Texture;
     platform_framebuffer FrameBuffer;
+    SDL_Rect WindowUpdateArea;
 } output_data;
 
 typedef struct _linux_game_code {
@@ -55,10 +56,13 @@ internal void ResizeBackbuffer(SDL_Renderer *Renderer, output_data *OutputData, 
     OutputData->FrameBuffer.Pitch = AdjustedWidth * 4;
     OutputData->FrameBuffer.MemorySize = 
         (OutputData->FrameBuffer.Pitch * AdjustedHeight);
-    // TODO: Use mmap? Might not be Mac-compatible.
     // TODO: Error out if malloc fails?
     OutputData->FrameBuffer.Memory = (u8*)malloc(OutputData->FrameBuffer.MemorySize);
     OutputData->FrameBuffer.BytesPerPixel = 4;
+    OutputData->WindowUpdateArea.x = 0;
+    OutputData->WindowUpdateArea.y = 0;
+    OutputData->WindowUpdateArea.w = DEFAULT_BACKBUFFERW;
+    OutputData->WindowUpdateArea.h = DEFAULT_BACKBUFFERH;
 }
 
 internal void SDLDrawBackbufferToWindow(SDL_Window *Window, SDL_Renderer *Renderer, output_data *OutputData)
@@ -71,7 +75,8 @@ internal void SDLDrawBackbufferToWindow(SDL_Window *Window, SDL_Renderer *Render
         printf("Problem with updating texture");
         //TODO: Do something about this error
     }
-    SDL_RenderCopy(Renderer, OutputData->Texture, 0, 0);
+    SDL_RenderClear(Renderer);
+    SDL_RenderCopy(Renderer, OutputData->Texture, 0, &OutputData->WindowUpdateArea);
     SDL_RenderPresent(Renderer);
 }
 
@@ -293,13 +298,13 @@ int main(int argc, char *argv[])
     MainWindow = SDL_CreateWindow("Schmasteroids",
                                   SDL_WINDOWPOS_UNDEFINED,
                                   SDL_WINDOWPOS_UNDEFINED,
-                                  DEFAULT_W,
-                                  DEFAULT_H,
+                                  DEFAULT_BACKBUFFERW,
+                                  DEFAULT_BACKBUFFERH,
                                   SDL_WINDOW_RESIZABLE);
     SDL_Renderer *Renderer = SDL_CreateRenderer(MainWindow, -1, 0);
 
     output_data OutputData = {};
-    ResizeBackbuffer(Renderer, &OutputData, DEFAULT_W, DEFAULT_H);
+    ResizeBackbuffer(Renderer, &OutputData, DEFAULT_BACKBUFFERW, DEFAULT_BACKBUFFERH);
 
     SDL_AudioSpec AudioSpec = {};
     AudioSpec.freq = GLOBAL_SAMPLES_PER_SECOND;
@@ -399,13 +404,23 @@ int main(int argc, char *argv[])
                 case SDL_WINDOWEVENT: {
                     switch(Event.window.event) {
                         case SDL_WINDOWEVENT_SIZE_CHANGED: {
-                            // TODO: On Windows, the gray bars and figuring out what portion of the window to blit to 
-                            // are figured out here. I was mis-remembering and thinking that was handled by game code.
-                            // Possibly it should be?
                             printf("SDL_WINDOWEVENT_SIZE_CHANGED\n");
-                            i32 Width, Height;
-                            SDL_GetWindowSize(MainWindow, &Width, &Height);
-                            ResizeBackbuffer(Renderer, &OutputData, Width, Height);
+                            i32 ClientWidth, ClientHeight;
+                            SDL_GetWindowSize(MainWindow, &ClientWidth, &ClientHeight);
+                            float MaxScaleX = (float)ClientWidth/(float)DEFAULT_BACKBUFFERW;
+                            float MaxScaleY = (float)ClientHeight/(float)DEFAULT_BACKBUFFERH;
+                            float Scale = Min(MaxScaleX, MaxScaleY);
+                            i32 NewWidth = (int)(Scale*DEFAULT_BACKBUFFERW);
+                            i32 NewHeight = (int)(Scale*DEFAULT_BACKBUFFERH);
+                            ResizeBackbuffer(Renderer, &OutputData, NewWidth, NewHeight);
+                            OutputData.WindowUpdateArea.x = (ClientWidth - NewWidth) / 2;
+                            OutputData.WindowUpdateArea.y = (ClientHeight - NewHeight) / 2;
+                            OutputData.WindowUpdateArea.w = NewWidth;
+                            OutputData.WindowUpdateArea.h = NewHeight;
+
+                            u8 GrayLevel = 64;
+                            SDL_SetRenderDrawColor(Renderer, GrayLevel, GrayLevel, GrayLevel, 255);
+                            SDL_RenderClear(Renderer);
                         } break;
                         case SDL_WINDOWEVENT_RESIZED: {
                             printf("SDL_WINDOWEVENT_RESIZED (%d x %d)\n", 
