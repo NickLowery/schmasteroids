@@ -67,7 +67,6 @@ __m128 UCharMax = _mm_set_ps1(255.0f);
 inline __m128 EuclideanDivide(__m128 Val, __m128 Divisor)
 {
     // NOTE: This only works with positive numbers!
-    // TODO: sse4.1 has floor...
     __m128i ResultInt = _mm_cvttps_epi32(_mm_div_ps(Val, Divisor));
     __m128 Result = _mm_cvtepi32_ps(ResultInt);
     return Result;
@@ -222,15 +221,15 @@ DrawLBufferToRGBBlockBuffer(l_buffer LBuffer, rgb_block_buffer *RGBBlockBuffer, 
 
     i32 SplitX = 0; 
     i32 SplitY = 0;
-    // TODO: There should be a way to do this with % operator yeah?
-    while (LBuffer.BMinX < 0) {
-        LBuffer.BMinX += RGBBlockBuffer->Width;
-    } 
-    while (LBuffer.BMinY < 0) {
-        LBuffer.BMinY += RGBBlockBuffer->Height;
-    } 
+    i32 OrigBMinX = LBuffer.BMinX;
     LBuffer.BMinX %= RGBBlockBuffer->Width;
     LBuffer.BMinY %= RGBBlockBuffer->Height;
+    if (LBuffer.BMinX < 0) { 
+        LBuffer.BMinX += RGBBlockBuffer->Width; 
+    }
+    if (LBuffer.BMinY < 0) { 
+        LBuffer.BMinY += RGBBlockBuffer->Height; 
+    }
     
     if (LBuffer.BMinX + LBuffer.BWidth > RGBBlockBuffer->Width) {
         SplitX = RGBBlockBuffer->Width - LBuffer.BMinX;
@@ -277,19 +276,6 @@ ApplyPointSourceToLBlockAdditive(float4 *OutBlock, v2_4 PixelCoords, v2_4 PointS
     *OutBlock = *OutBlock + CalculatedL;
 }
 
-// TODO: Called only in AllocateLBufferForBoundingRect
-internal l_buffer
-AllocateLBuffer(i32 BlockWidth, i32 BlockHeight, memory_arena *Arena)
-{
-    l_buffer Result;
-    Result.BWidth = BlockWidth;
-    Result.BHeight = BlockHeight;
-    Result.Values = PushArrayAligned(Arena, BlockWidth*BlockHeight, float4, 16);
-    ZeroSize(Result.Values, BlockWidth * BlockHeight * sizeof(float4));
-    AssertAligned(Result.Values, 16);
-    return Result;
-}
-
 internal l_buffer AllocateLBufferForBoundingRect(rect BoundingRect, memory_arena *Arena)
 {
     i32 MinXI = RoundDownToMultipleOf(2, Floor(BoundingRect.Min.X));
@@ -300,7 +286,14 @@ internal l_buffer AllocateLBufferForBoundingRect(rect BoundingRect, memory_arena
     i32 Height = RoundUpToMultipleOf(2, OnePastMaxYI - MinYI);
 
     l_buffer Result;
-    Result = AllocateLBuffer(Width/2, Height/2,  Arena);
+    Result.BWidth = Width / 2;
+    Result.BHeight = Height / 2;
+    size_t BlockCount = (size_t)Result.BWidth * (size_t)Result.BHeight;
+    Result.Values = PushArrayAligned(Arena, 
+                                     BlockCount, float4, 16);
+    ZeroSize(Result.Values, BlockCount * sizeof(float4));
+    AssertAligned(Result.Values, 16);
+
     Result.MinPoint = V2((float)MinXI, (float)MinYI);
     Result.BMinX = MinXI/2;
     Result.BMinY = MinYI/2;
