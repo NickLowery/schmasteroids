@@ -1,6 +1,8 @@
 #ifndef SCHM_BENCH_H
 #define SCHM_BENCH_H 1
 
+// TODO: Update so this can work on Linux?
+
 #if BENCHMARK
 static u32 GlobalFrameCount;
 static u32 GlobalFramesToRender;

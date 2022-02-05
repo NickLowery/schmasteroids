@@ -46,13 +46,13 @@ internal void ResizeBackbuffer(SDL_Renderer *Renderer, output_data *OutputData, 
     if (OutputData->FrameBuffer.Memory) {
         free(OutputData->FrameBuffer.Memory);
     }
+    i32 AdjustedWidth = RoundUpToMultipleOf(4,Width);
+    i32 AdjustedHeight = RoundUpToMultipleOf(4,Height);
     OutputData->Texture = SDL_CreateTexture(Renderer,
                                 SDL_PIXELFORMAT_ARGB8888,
                                 SDL_TEXTUREACCESS_STREAMING,
-                                Width,
-                                Height);
-    i32 AdjustedWidth = RoundDownToMultipleOf(4,Width);
-    i32 AdjustedHeight = RoundDownToMultipleOf(4,Height);
+                                AdjustedWidth,
+                                AdjustedHeight);
     OutputData->FrameBuffer.Width = AdjustedWidth; 
     OutputData->FrameBuffer.Height = AdjustedHeight;
     OutputData->FrameBuffer.Pitch = AdjustedWidth * 4;
@@ -489,8 +489,44 @@ int main(int argc, char *argv[])
 
         if (Game.IsValid) {
             printf("Updating game\n");
+
+
+            // NOTE: I tried using SDL_LockTexture instead of SDL_UpdateTexture 
+            // here and tested to see if it made things faster. The test I ran 
+            // didn't seem to show any signicant difference. Could try
+            // again if I get render benchmark working on linux. Seems unlikely
+            // to make a significant difference compared to the time of the 
+            // actual update.
+            /*
+            static u64 RunningTotalDrawCycles = 0;
+            static u64 FrameCount = 0;
+            u64 PreDrawCycles = _rdtsc();
+            */
+#if 1
             Game.UpdateAndRender(&OutputData.FrameBuffer, ThisInput, &GameMemory);
             SDLDrawBackbufferToWindow(GlobalMainWindow, Renderer, &OutputData);
+#else
+            // TODO: If I use this, make ResizeBuffer actually make sense
+            u8* SavedFrameBufferMemory = OutputData.FrameBuffer.Memory;
+            i32 ReceivedPitch;
+            SDL_LockTexture(OutputData.Texture, 0, (void**)&OutputData.FrameBuffer.Memory, &ReceivedPitch);
+
+            Assert(ReceivedPitch == OutputData.FrameBuffer.Pitch);
+            Game.UpdateAndRender(&OutputData.FrameBuffer, ThisInput, &GameMemory);
+            SDL_UnlockTexture(OutputData.Texture);
+            SDL_RenderClear(Renderer);
+            SDL_RenderCopy(Renderer, OutputData.Texture, 0, &OutputData.WindowUpdateArea);
+            SDL_RenderPresent(Renderer);
+            OutputData.FrameBuffer.Memory = SavedFrameBufferMemory;
+#endif
+            /*
+            u64 PostDrawCycles = _rdtsc();
+            //printf("Cycles in draw: %lu\n", PostDrawCycles - PreDrawCycles);
+            RunningTotalDrawCycles += (PostDrawCycles - PreDrawCycles);
+            float AverageDrawCycles = (float)RunningTotalDrawCycles / (float)++FrameCount;
+            printf("Average cycles in draw: %f\n", AverageDrawCycles);
+            */
+
 
             u32 ExpectedBytesPerVideoFrame = BytesPerAFrame * 
                                      (u32)(
