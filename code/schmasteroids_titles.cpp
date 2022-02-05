@@ -14,20 +14,21 @@ UpdateAndDrawLevelStartScreen(metagame_state *Metagame, render_buffer *Renderer,
     Light.C_L = 2.0f * SceneAlpha;
     Light.ZDistSq = 3.0f;
     float dTime = Input->SecondsElapsed;
-    if (Metagame->CurrentGameMode == GameMode_LevelStartScreen &&
-        SoundState->NextClip == 0) {
-        PlayClipNextOrAfterFade(Metagame, &Metagame->Sounds.GameLoop);
+    bool32 DisplayTimeFinished = false;
+    if (Metagame->CurrentGameMode == GameMode_LevelStartScreen) {
+        DisplayTimeFinished = UpdateAndCheckTimer(&Metagame->StartScreenTimer, dTime);
     }
-    // TODO: More robust way of deciding if the clip will be playing next frame... use whatever
-    // we do to get pulsing lights on the beat
-    if ((Metagame->CurrentGameMode == GameMode_LevelStartScreen) &&
-        (UpdateAndCheckTimer(&Metagame->StartScreenTimer, dTime)) &&
-        SoundState->CurrentClip == &Metagame->Sounds.GameLoop) 
+    if (DisplayTimeFinished)
     {
-        // TODO: Something better than just short-circuiting the transition for this?
-        Metagame->CurrentGameMode = GameMode_Playing;
-        Metagame->NextGameMode = GameMode_None;
-    } 
+        if (SoundState->NextClip == 0) {
+        PlayClipNextOrAfterFade(Metagame, &Metagame->Sounds.GameLoop);
+        }
+        if (SoundState->CurrentClip == &Metagame->Sounds.GameLoop) 
+        {
+            Metagame->CurrentGameMode = GameMode_Playing;
+            Metagame->NextGameMode = GameMode_None;
+        } 
+    }
 
 
     v2 GlyphDim = CalculateGlyphDimFromWidth(Metagame, StringLength("level"), SCREEN_WIDTH/2);

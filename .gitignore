@@ -1,5 +1,6 @@
 build/*
 data/*
 *.vim
+*.sw?
 scratch
 tags
