@@ -12,6 +12,8 @@
 
 static bool32 GlobalRunning;
 static platform_framebuffer GlobalBackbuffer;
+static bool32 GlobalIsFullScreen = false;
+static SDL_Window *GlobalMainWindow;
 
 typedef struct _output_data {
     SDL_Texture *Texture;
@@ -56,8 +58,11 @@ internal void ResizeBackbuffer(SDL_Renderer *Renderer, output_data *OutputData, 
     OutputData->FrameBuffer.Pitch = AdjustedWidth * 4;
     OutputData->FrameBuffer.MemorySize = 
         (OutputData->FrameBuffer.Pitch * AdjustedHeight);
-    // TODO: Error out if malloc fails?
     OutputData->FrameBuffer.Memory = (u8*)malloc(OutputData->FrameBuffer.MemorySize);
+    if (!OutputData->FrameBuffer.Memory) {
+        printf("Malloc failed in ResizeBackbuffer");
+        ErrorOut(-1);
+    }
     OutputData->FrameBuffer.BytesPerPixel = 4;
     OutputData->WindowUpdateArea.x = 0;
     OutputData->WindowUpdateArea.y = 0;
@@ -73,7 +78,7 @@ internal void SDLDrawBackbufferToWindow(SDL_Window *Window, SDL_Renderer *Render
                       OutputData->FrameBuffer.Memory, OutputData->FrameBuffer.Pitch))
     {
         printf("Problem with updating texture");
-        //TODO: Do something about this error
+        ErrorOut(-1);
     }
     SDL_RenderClear(Renderer);
     SDL_RenderCopy(Renderer, OutputData->Texture, 0, &OutputData->WindowUpdateArea);
@@ -223,7 +228,7 @@ PLATFORM_DEBUG_READ_FILE(LinuxSDLDebugReadFile)
 }
 PLATFORM_DEBUG_WRITE_FILE(LinuxSDLDebugWriteFile)
 {
-    // TODO: Implement
+    // TODO: Implement if we need debug file writing
 }
 PLATFORM_FREE_FILE_MEMORY(LinuxSDLFreeFileMemory) 
 {
@@ -233,7 +238,7 @@ PLATFORM_FREE_FILE_MEMORY(LinuxSDLFreeFileMemory)
 }
 PLATFORM_DEBUG_SAVE_FRAMEBUFFER_AS_BMP(LinuxSDLDebugSaveFramebufferAsBMP)
 {
-    // TODO: Implement this
+    // TODO: Implement this if we need to save framebuffer
 }
 PLATFORM_QUIT(LinuxSDLQuit)
 {
@@ -242,9 +247,14 @@ PLATFORM_QUIT(LinuxSDLQuit)
 
 PLATFORM_TOGGLE_FULLSCREEN(LinuxSDLToggleFullScreen)
 {
-    // TODO: Implement this!
+    if (GlobalIsFullScreen) {
+        SDL_SetWindowFullscreen(GlobalMainWindow, 0);
+        GlobalIsFullScreen = false;
+    } else {
+        SDL_SetWindowFullscreen(GlobalMainWindow, SDL_WINDOW_FULLSCREEN);
+        GlobalIsFullScreen = true;
+    }
 }
-
 
 void * LoadGameFunction(void *SO, const char *FunctionName) {
     void *Result = dlsym(SO, FunctionName);
@@ -294,14 +304,13 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    SDL_Window *MainWindow;
-    MainWindow = SDL_CreateWindow("Schmasteroids",
+    GlobalMainWindow = SDL_CreateWindow("Schmasteroids",
                                   SDL_WINDOWPOS_UNDEFINED,
                                   SDL_WINDOWPOS_UNDEFINED,
                                   DEFAULT_BACKBUFFERW,
                                   DEFAULT_BACKBUFFERH,
                                   SDL_WINDOW_RESIZABLE);
-    SDL_Renderer *Renderer = SDL_CreateRenderer(MainWindow, -1, 0);
+    SDL_Renderer *Renderer = SDL_CreateRenderer(GlobalMainWindow, -1, 0);
 
     output_data OutputData = {};
     ResizeBackbuffer(Renderer, &OutputData, DEFAULT_BACKBUFFERW, DEFAULT_BACKBUFFERH);
@@ -406,7 +415,7 @@ int main(int argc, char *argv[])
                         case SDL_WINDOWEVENT_SIZE_CHANGED: {
                             printf("SDL_WINDOWEVENT_SIZE_CHANGED\n");
                             i32 ClientWidth, ClientHeight;
-                            SDL_GetWindowSize(MainWindow, &ClientWidth, &ClientHeight);
+                            SDL_GetWindowSize(GlobalMainWindow, &ClientWidth, &ClientHeight);
                             float MaxScaleX = (float)ClientWidth/(float)DEFAULT_BACKBUFFERW;
                             float MaxScaleY = (float)ClientHeight/(float)DEFAULT_BACKBUFFERH;
                             float Scale = Min(MaxScaleX, MaxScaleY);
@@ -431,7 +440,7 @@ int main(int argc, char *argv[])
                             // TODO: Get window ID from the event in case we ever 
                             // have more than one window? Doesn't seem likely 
                             // that we would want to.
-                            SDLDrawBackbufferToWindow(MainWindow, Renderer, &OutputData);
+                            SDLDrawBackbufferToWindow(GlobalMainWindow, Renderer, &OutputData);
                         } break;
                     }
                 } break;
@@ -471,18 +480,11 @@ int main(int argc, char *argv[])
         if (Game.IsValid) {
             printf("Updating game\n");
             Game.UpdateAndRender(&OutputData.FrameBuffer, ThisInput, &GameMemory);
-            SDLDrawBackbufferToWindow(MainWindow, Renderer, &OutputData);
+            SDLDrawBackbufferToWindow(GlobalMainWindow, Renderer, &OutputData);
 
             u32 Channels = 2;
             u32 BytesPerSample = 2;
             u32 BytesPerAFrame = Channels * BytesPerSample;
-            // TODO: I'm getting a really bad resolution of how much 
-            // padding there is, nearly a second's worth. Maybe my 
-            // sound card is just that bad? Maybe ther's some other 
-            // problem? Let's try something like: Figure out a target 
-            // latency, write that to start with... Figure out how much audio we expect to need per frame? Try to adjust on the fly somehow?
-            // TODO: Or, try the other API but I don't like that idea very much.
-            // TODO: David Gow's solution was to have his own ring buffer effectively and use the callback API to fill from that. We could try something like that.
             u32 ExpectedBytesPerVideoFrame = BytesPerAFrame * 
                                      (u32)(
                                          (float)GLOBAL_SAMPLES_PER_SECOND * 
