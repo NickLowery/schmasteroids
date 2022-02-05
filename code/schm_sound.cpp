@@ -55,7 +55,7 @@ PlaySound(metagame_state *Metagame, game_compatible_wav *Wav, float Gain = DEFAU
     i32 SoundIndex = FirstBlock->Count++;
     FirstBlock->Wav[SoundIndex] = Wav;
     FirstBlock->CurrentSample[SoundIndex] = Wav->Samples;
-    FirstBlock->Gain[SoundIndex] = DEFAULT_GAIN;
+    FirstBlock->Gain[SoundIndex] = Gain;
 }
 
 typedef struct {

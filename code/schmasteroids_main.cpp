@@ -795,7 +795,7 @@ ExplodeAsteroid(asteroid* Exploding, game_state *GameState, metagame_state *Meta
         }
     }
     ExplodeObject(GameState, &Exploding->O, AsteroidProps[Exploding->Size].Particles, Color(ASTEROID_COLOR));
-    PlaySound(Metagame, &Metagame->Sounds.AsteroidExplosion);
+    PlaySound(Metagame, &Metagame->Sounds.AsteroidExplosion, 0.25f);
     GameState->Score += AsteroidProps[Exploding->Size].DestroyPoints;
 }
 
