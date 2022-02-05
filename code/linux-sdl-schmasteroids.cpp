@@ -72,7 +72,7 @@ internal void ResizeBackbuffer(SDL_Renderer *Renderer, output_data *OutputData, 
 
 internal void SDLDrawBackbufferToWindow(SDL_Window *Window, SDL_Renderer *Renderer, output_data *OutputData)
 {
-    // TODO: Use SDL_LockTexture? Supposedly faster. Just write directly to
+    // TODO: Try using SDL_LockTexture? Supposedly faster. Just write directly to
     // what it returns?
     if (SDL_UpdateTexture(OutputData->Texture, 0, 
                       OutputData->FrameBuffer.Memory, OutputData->FrameBuffer.Pitch))
@@ -265,7 +265,6 @@ void * LoadGameFunction(void *SO, const char *FunctionName) {
             printf("dlerror returned: %s\n", DLErrorOutput);
         }
         ErrorOut(-1);
-        // TODO: Something else to handle the error?
     }
     return Result;
 }
@@ -300,10 +299,11 @@ int main(int argc, char *argv[])
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0)
         // TODO: Possibly use SDL_AudioInit() to control what driver we use?
     {
-        //TODO: SDL_Init didn't work!
+        printf("SDL_Init failed. Is SDL installed?");
         return -1;
     }
 
+    // Window and output set-up
     GlobalMainWindow = SDL_CreateWindow("Schmasteroids",
                                   SDL_WINDOWPOS_UNDEFINED,
                                   SDL_WINDOWPOS_UNDEFINED,
@@ -311,10 +311,10 @@ int main(int argc, char *argv[])
                                   DEFAULT_BACKBUFFERH,
                                   SDL_WINDOW_RESIZABLE);
     SDL_Renderer *Renderer = SDL_CreateRenderer(GlobalMainWindow, -1, 0);
-
     output_data OutputData = {};
     ResizeBackbuffer(Renderer, &OutputData, DEFAULT_BACKBUFFERW, DEFAULT_BACKBUFFERH);
 
+    // Audio set-up
     SDL_AudioSpec AudioSpec = {};
     AudioSpec.freq = GLOBAL_SAMPLES_PER_SECOND;
     AudioSpec.format = AUDIO_S16LSB;
@@ -322,16 +322,24 @@ int main(int argc, char *argv[])
     AudioSpec.samples = 1024;
     if(SDL_OpenAudio(&AudioSpec, 0)) {
         printf("Error opening audio device\n");
-        // TODO: Do something about this error
+        ErrorOut(-1);
     }
     SDL_PauseAudio(1);
     bool32 SoundPlaying = false;
+
+    u32 Channels = 2;
+    u32 BytesPerSample = 2;
+    u32 BytesPerAFrame = Channels * BytesPerSample;
+    platform_sound_output_buffer SoundBuffer = {};
+    SoundBuffer.AFramesPerSecond = GLOBAL_SAMPLES_PER_SECOND;
+    size_t SoundBufferSize = BytesPerAFrame * GLOBAL_SAMPLES_PER_SECOND * 2;
+    SoundBuffer.SampleData = (i16*)malloc(SoundBufferSize);
     
     // Timing set-up
     u64 PerfFrequency = SDL_GetPerformanceFrequency();
     float TargetSecondsPerFrame = 1.0f / (float)TARGETFPS;
 
-    // Load game code!
+    // Load game code
     char SOPath[] = "./schmasteroids_main.so";
     linux_game_code Game = LoadGameCode();
 
@@ -342,21 +350,26 @@ int main(int argc, char *argv[])
     }
 
     // Memory
-#if DEBUG_BUILD
-    void* GameMemoryBase = (void*)Terabytes(2);
-#else
-    void* GameMemoryBase = 0;
-#endif
     game_memory GameMemory = {};
     GameMemory.PermanentStorageSize = PERMANENT_STORE_SIZE;
     GameMemory.TransientStorageSize = TRANSIENT_STORE_SIZE;
     size_t CombinedMemorySize = (size_t)(GameMemory.PermanentStorageSize +
                                 GameMemory.TransientStorageSize);
-    // TODO: Mac compatible?
+#if DEBUG_BUILD
+    void* GameMemoryBase = (void*)Terabytes(2);
+    // NOTE: Mac compatible?
     GameMemory.PermanentStorage = mmap(GameMemoryBase, CombinedMemorySize,
                                        PROT_READ | PROT_WRITE,
                                        MAP_ANON | MAP_PRIVATE,
                                        -1, 0);
+    Assert(GameMemory.PermanentStorage != MAP_FAILED);
+#else
+    GameMemory.PermanentStorage = malloc(CombinedMemorySize);
+    if (!GameMemory.PermanentStorage) {
+        printf("Couldn't get game memory");
+        ErrorOut(-1);
+    }
+#endif
     Assert(GameMemory.PermanentStorage);
     GameMemory.TransientStorage = (u8*)GameMemory.PermanentStorage + 
                                   GameMemory.PermanentStorageSize;
@@ -395,7 +408,7 @@ int main(int argc, char *argv[])
 
     GlobalRunning = true;
     while(GlobalRunning) {
-        // TODO: IMPORTANT! Add hotloading of SO
+        // TODO: Add hotloading of SO
         
         for(u32 KeyIndex = 0; KeyIndex < (u32)ArrayCount(ThisInput->Keyboard.Keys); KeyIndex++) {
             ThisInput->Keyboard.Keys[KeyIndex].IsDown = 
@@ -437,9 +450,6 @@ int main(int argc, char *argv[])
                                     Event.window.data2);
                         } break;
                         case SDL_WINDOWEVENT_EXPOSED: {
-                            // TODO: Get window ID from the event in case we ever 
-                            // have more than one window? Doesn't seem likely 
-                            // that we would want to.
                             SDLDrawBackbufferToWindow(GlobalMainWindow, Renderer, &OutputData);
                         } break;
                     }
@@ -482,9 +492,6 @@ int main(int argc, char *argv[])
             Game.UpdateAndRender(&OutputData.FrameBuffer, ThisInput, &GameMemory);
             SDLDrawBackbufferToWindow(GlobalMainWindow, Renderer, &OutputData);
 
-            u32 Channels = 2;
-            u32 BytesPerSample = 2;
-            u32 BytesPerAFrame = Channels * BytesPerSample;
             u32 ExpectedBytesPerVideoFrame = BytesPerAFrame * 
                                      (u32)(
                                          (float)GLOBAL_SAMPLES_PER_SECOND * 
@@ -494,18 +501,6 @@ int main(int argc, char *argv[])
             // With 4096 the resolution was very poor and latency was high, with 1024 I'm getting reasonable results so far.
             u32 SoundPaddingBytes = SDL_GetQueuedAudioSize(1);
             
-#if 0
-            u32 DesiredPaddingBytes = ExpectedBytesPerVideoFrame * 2;
-            u32 BytesToWrite;
-            if (ExpectedBytesPerVideoFrame > SoundPaddingBytes) {
-                BytesToWrite = DesiredPaddingBytes - SoundPaddingBytes;
-            } else if (SoundPaddingBytes > DesiredPaddingBytes + ExpectedBytesPerVideoFrame) {
-                BytesToWrite = 0;
-            } else {
-                // Write the amount we expect to have to write
-                BytesToWrite = ExpectedBytesPerVideoFrame;
-            }
-#else
             u32 DesiredPaddingBytes = ExpectedBytesPerVideoFrame * 2;
             u32 BytesToWrite;
             if (DesiredPaddingBytes > SoundPaddingBytes) {
@@ -513,20 +508,19 @@ int main(int argc, char *argv[])
             } else {
                 BytesToWrite = 0;
             }
-#endif
-            platform_sound_output_buffer SoundBuffer = {};
-            SoundBuffer.AFramesPerSecond = GLOBAL_SAMPLES_PER_SECOND;
             Assert(BytesToWrite % BytesPerAFrame == 0);
             SoundBuffer.AFramesToWrite = BytesToWrite / BytesPerAFrame;
             printf("SoundPaddingBytes = %d\n", SoundPaddingBytes);
             printf("Writing %d audio frames\n", SoundBuffer.AFramesToWrite);
-            // TODO: Don't do a malloc every frame!
-            SoundBuffer.SampleData = (i16*)malloc(BytesToWrite);
+            if (BytesToWrite > SoundBufferSize) {
+                InvalidCodePath;
+                printf("Audio error, BytesToWrite is too large\n");
+                ErrorOut(-1);
+            }
 
             Game.GetSoundOutput(&SoundBuffer, &GameMemory);
             SDL_QueueAudio(1, SoundBuffer.SampleData, BytesToWrite);
 
-            free(SoundBuffer.SampleData);
             if (!SoundPlaying) {
                 SDL_PauseAudio(0);
                 SoundPlaying = true;
@@ -540,7 +534,6 @@ int main(int argc, char *argv[])
         u64 PostUpdateCycles = _rdtsc();
         //printf("Cycles in update: %lu\n", PostUpdateCycles - PreUpdateCycles);
         u64 LoopEndCounter = SDL_GetPerformanceCounter();
-        // TODO: Is it better to do this in u64?
         float SecondsInUpdate = (float)(LoopEndCounter - PreUpdateCounter) /
                                 (float)PerfFrequency;
         //printf("Seconds in update: %f\n", SecondsInUpdate);
