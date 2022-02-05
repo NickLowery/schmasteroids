@@ -72,8 +72,6 @@ internal void ResizeBackbuffer(SDL_Renderer *Renderer, output_data *OutputData, 
 
 internal void SDLDrawBackbufferToWindow(SDL_Window *Window, SDL_Renderer *Renderer, output_data *OutputData)
 {
-    // TODO: Try using SDL_LockTexture? Supposedly faster. Just write directly to
-    // what it returns?
     if (SDL_UpdateTexture(OutputData->Texture, 0, 
                       OutputData->FrameBuffer.Memory, OutputData->FrameBuffer.Pitch))
     {

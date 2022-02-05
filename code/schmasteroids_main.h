@@ -127,7 +127,7 @@ static constexpr rect ScreenRect = {SCREEN_LEFT, SCREEN_TOP, SCREEN_RIGHT, SCREE
 
 #define GLYPH_MAX_SEGS 8
 
-#define GAME_OVER_TIME 3.0f
+#define GAME_OVER_TIME 1.5f
 
 
 // The properties of a size of asteroid
@@ -601,6 +601,9 @@ typedef struct metagame_state_ {
 #endif
 } metagame_state;
 
+inline game_state *
+GetGameState(metagame_state *MetagameState);
+    
 inline void
 SetModeChangeTimer(metagame_state *MetagameState, float Seconds);
 

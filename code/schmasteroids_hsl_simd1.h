@@ -1,5 +1,9 @@
 #ifndef SCHMASTEROIDS_HSLDRAW_H
 #define SCHMASTEROIDS_HSLDRAW_H
+// TODO: Take another pass at this when possible... make sure that the swizzling actually makes sense to do?
+// I suspect that my test in October 2021 was not fair to the unswizzled version. Based on watching Casey's simd
+// optimization, it seems quite possible that getting __m128 values out of structs could have
+// performance impact too.
 
 inline float CalculateLightMarginSq(light_source *Light, float LMin = 1.0f/255.0f)
 {

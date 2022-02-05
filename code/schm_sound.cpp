@@ -146,6 +146,7 @@ ResetOrAdvanceCurrentClipIfFinished(sound_state *SoundState) {
 extern "C"
 GAME_GET_SOUND_OUTPUT(GameGetSoundOutput)
 {
+#if !RENDER_BENCHMARK
     BENCH_START_FRAME_CYCLE_COUNT(PlaySound)
     BENCH_START_COUNTING_CYCLES(PlaySound)
     Assert(sizeof(metagame_state) < GameMemory->PermanentStorageSize);
@@ -257,4 +258,5 @@ GAME_GET_SOUND_OUTPUT(GameGetSoundOutput)
 
     BENCH_STOP_COUNTING_CYCLES(PlaySound)
     BENCH_FINISH_FRAME_ALL
+#endif
 }

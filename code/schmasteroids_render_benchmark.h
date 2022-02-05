@@ -9,6 +9,14 @@ SetUpRenderBenchmark(game_state *GameState, metagame_state *Metagame)
 {
     GlobalFrameCount = 0;
 
+    if (GameState->GameArena.Base) {
+        ResetArena(&GameState->GameArena);
+    } else {
+        u64 GameArenaSize = Megabytes(1);
+        void *GameMemory = PushSize(&Metagame->PermanentArena, GameArenaSize);
+        InitializeArena(&GameState->GameArena, GameArenaSize, GameMemory);
+    }
+
     GameState->LevelComplete = false;
     level *Level = &GameState->Level;
     Level->StartingAsteroids = MAX_ASTEROIDS;
@@ -74,36 +82,48 @@ SetUpRenderBenchmark(game_state *GameState, metagame_state *Metagame)
 }
 
 internal void
-UpdateAndDrawRenderBenchmark(game_state *GameState, game_memory *GameMemory, render_buffer *Renderer, game_input *Input)
+UpdateAndDrawRenderBenchmark(metagame_state *Metagame, game_memory *GameMemory, render_buffer *Renderer, game_input *Input)
 {
-    static const u32 FramesToRender = 60;
+    game_state *GameState = GetGameState(Metagame);
+    GlobalFramesToRender = 200;
 
     float dTime = Input->SecondsElapsed;
 
-    if (GlobalFrameCount < FramesToRender)
+    if (GlobalFrameCount < GlobalFramesToRender)
     {
         BENCH_START_FRAME_ALL
 
         BENCH_START_COUNTING_CYCLES_USECONDS(UpdateGame)
         MoveAsteroids(dTime, GameState);
+        // Explode an asteroid each frame so we are testing particles too
+        i32 AIndex = 0;
+        while (!GameState->Asteroids[AIndex].O.Exists && AIndex < ArrayCount(GameState->Asteroids)) {
+            ++AIndex;
+        }
+        ExplodeAsteroid(&GameState->Asteroids[AIndex], GameState, Metagame);
+
+        MoveParticles(dTime, GameState);
+        
+
+
         BENCH_STOP_COUNTING_CYCLES_USECONDS(UpdateGame)
 
         BENCH_START_COUNTING_CYCLES_USECONDS(DrawGame)
 
         //DrawAsteroidsHSL(Backbuffer, GameState);
         PushAsteroids(Renderer, GameState);
+        for (particle_group *Group = GameState->FirstParticleGroup;
+            Group;
+            Group = Group->NextGroup)
+        {
+            float C_L = Lerp(0.0f, Group->SecondsToLive / PARTICLE_LIFETIME, Group->C_LOriginal);
+            PushParticleGroup(Renderer, Group, C_L);
+        }
 
         BENCH_STOP_COUNTING_CYCLES_USECONDS(DrawGame)
 
-        BENCH_FINISH_FRAME_ALL
         BENCH_DUMP_FRAME_BMP
 
-        if (GlobalFrameCount == FramesToRender) {
-            BENCH_FINISH_ALL
-
-
-            BENCH_WRITE_LOG_TO_FILE("render_log.txt")
-        }
     } 
 }
 

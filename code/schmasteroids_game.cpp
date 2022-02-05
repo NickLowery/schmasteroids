@@ -353,6 +353,9 @@ UpdateAndDrawGameplay(game_state *GameState, render_buffer *Renderer, game_input
         GameOverLight.ZDistSq = 32.0f;
         GameState->GameOverTimer -= Input->SecondsElapsed;
         GameOverLight.C_L = Lerp(8.0f, GameState->GameOverTimer/GAME_OVER_TIME, 0.0f);
+        if (GameOverLight.C_L > 8.0f) {
+            GameOverLight.C_L = 8.0f;
+        }
         PrintFromWidthAndCenter(Renderer, Metagame, &GameOverLight, "game over", 700.0, ScreenCenter);
     }
 

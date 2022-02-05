@@ -182,6 +182,8 @@ GAME_INITIALIZE(GameInitialize)
 #if RENDER_BENCHMARK
     SeedPRNG(42);
     SetUpRenderBenchmark(GameState, Metagame);
+    
+    Metagame->SoundState.CurrentClip = 0;
     Metagame->CurrentGameMode = GameMode_Playing;
 #elif CREATE_GAME_BENCHMARK
     SetUpLevel(Metagame, 10);
@@ -201,7 +203,7 @@ GAME_INITIALIZE(GameInitialize)
 extern "C"
 GAME_UPDATE_AND_RENDER(GameUpdateAndRender) 
 {
-    Assert(sizeof(metagame_state) < GameMemory->PermanentStorageSize);
+     Assert(sizeof(metagame_state) < GameMemory->PermanentStorageSize);
     metagame_state *Metagame = (metagame_state*)GameMemory->PermanentStorage;
     game_state *GameState = GetGameState(Metagame);
     BENCH_START_FRAME_ALL
@@ -249,6 +251,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             NextEditMode(GameMemory);
         }
     }
+    if (WentDown(&Input->DebugKeys.F8)) {
+        if(Input->Keyboard.Shift.IsDown && GameState->ExtraLives >= 0) {
+            --GameState->ExtraLives;
+        } else {
+            ++GameState->ExtraLives;
+        }
+    }
     if (WentDown(&Input->DebugKeys.F11)) {
         GameMemory->PlatformQuit();
     }
@@ -286,6 +295,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                         Metagame->StartScreenTimer = LEVEL_START_SCREEN_HOLD_TIME;
                     } break;
                     case (GameMode_StartScreen): {
+                        SetUpLevel(Metagame, 1);
+                        SetUpLevelStartScreen(Metagame, 1);
                     } break;
                     case (GameMode_Playing): {
                     } break;
@@ -311,24 +322,19 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             } break;
             case (GameMode_Playing): {
 #if RENDER_BENCHMARK
-                UpdateAndDrawRenderBenchmark(GameState, GameMemory, &OutputRender, Input);
+                UpdateAndDrawRenderBenchmark(Metagame, GameMemory, &OutputRender, Input);
 #else
-                if (GameState->GameOverTimer < 0.0f) {
-                    // TODO: Just use the game mode change timer here?
-                    GameState->GameOverTimer = GAME_OVER_TIME;
-                    SetUpLevel(Metagame, 1);
-                    SetUpLevelStartScreen(Metagame, 1);
+                if (GameState->GameOverTimer < 0.0f && Metagame->NextGameMode != GameMode_StartScreen) {
+                    Metagame->NextGameMode = GameMode_StartScreen;
+                    SetModeChangeTimer(Metagame, 3.0f);
                     SetUpStartScreen(Metagame);
-                    Metagame->CurrentGameMode = GameMode_StartScreen;
-                    // TODO: Use NextGameMode here
-                } else {
-                    UpdateAndDrawGameplay(GameState, &OutputRender, Input, Metagame, CurrentSceneAlpha);
-                    if(GameState->LevelComplete && !Metagame->NextGameMode) {
-                        SetModeChangeTimer(Metagame, 3.0f);
-                        SetUpLevelStartScreen(Metagame, GameState->Level.Number);
-                        Metagame->NextGameMode = GameMode_LevelStartScreen;
-                    } 
                 }
+                UpdateAndDrawGameplay(GameState, &OutputRender, Input, Metagame, CurrentSceneAlpha);
+                if(GameState->LevelComplete && !Metagame->NextGameMode) {
+                    SetModeChangeTimer(Metagame, 3.0f);
+                    SetUpLevelStartScreen(Metagame, GameState->Level.Number);
+                    Metagame->NextGameMode = GameMode_LevelStartScreen;
+                } 
 #endif
             } break;
             case (GameMode_None): {
@@ -339,7 +345,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         switch(Metagame->NextGameMode) 
         {
             case (GameMode_StartScreen): {
-                UpdateAndDrawLevelStartScreen(Metagame, &OutputRender, Input, NextSceneAlpha);
             } break;
             case (GameMode_LevelStartScreen): {
                 UpdateAndDrawLevelStartScreen(Metagame, &OutputRender, Input, NextSceneAlpha);
@@ -354,11 +359,21 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     BENCH_START_COUNTING_CYCLES_USECONDS_NO_INC(DrawGame)
     Render(&OutputRender, Backbuffer, &Metagame->TransientArena);
     BENCH_STOP_COUNTING_CYCLES_USECONDS(DrawGame)
+#if RENDER_BENCHMARK
+    BENCH_FINISH_FRAME_ALL
+    if (GlobalFrameCount == GlobalFramesToRender) {
+        BENCH_FINISH_ALL
+        BENCH_WRITE_LOG_TO_FILE("render_log.txt")
+
+        GameMemory->PlatformQuit();
+    }
+#endif
 
 #if RUN_GAME_BENCHMARK
     if (GlobalFrameCount == GlobalFramesToRender) {
         BENCH_FINISH_ALL
         BENCH_WRITE_LOG_TO_FILE("GameBenchmark.txt")
+        Metagame->SoundState.CurrentClip = 0;
 
         GameMemory->PlatformQuit();
     }

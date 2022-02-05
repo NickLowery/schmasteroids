@@ -865,6 +865,9 @@ WinMain(HINSTANCE Instance,
                         Game.Initialize(&GlobalBackbuffer, &WinState.GameMemory);
                     }
                     float TargetSecondsPerFrame = 1.0f / (float)TARGETFPS;
+#if RENDER_BENCHMARK
+                    Win32ToggleFullScreen();
+#endif
 #if RUN_GAME_BENCHMARK
                     Win32StartBenchmarkPlayback(&WinState);
 #endif
