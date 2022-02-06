@@ -461,7 +461,6 @@ ShipShoot(game_state *GameState, metagame_state *Metagame)
 }
 
 
-//TODO: There's definitely common code in these SaucerShoot functions that could be compressed.
 inline void SaucerShoot(metagame_state *Metagame, v2 ShotVector)
 {
     game_state *GameState = GetGameState(Metagame);

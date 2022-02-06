@@ -1,12 +1,9 @@
 #if DEBUG_BUILD
-// TODO: Make this work again
+static bool32 DebugMusicOff = false;
 inline void
 DebugToggleMusic(metagame_state *Metagame)
 {
-    /*
-    bool32 MusicPlaying = Metagame->Sounds.MusicLoop.Playing;
-    Metagame->Sounds.MusicLoop.Playing = !MusicPlaying;
-    */
+    DebugMusicOff = !DebugMusicOff;
 }
 
 #endif
@@ -67,7 +64,6 @@ typedef struct {
 // actually playing when the current frame of video is displayed. Currently we are just accepting 
 // whatever latency the platform layer hands us but we'd like to improve that.
 
-// TODO: Have GetPositionInMeasure also?
 inline music_position_data
 GetMusicPositionData(sound_state *SoundState)
     // NOTE: Calculate at end of sound output and retain? Would it be worth it?
@@ -205,17 +201,30 @@ GAME_GET_SOUND_OUTPUT(GameGetSoundOutput)
             game_music_clip *CurrentClip = SoundState->CurrentClip;
 
 
-            OutValue[0] += (i16)(CurrentClipVolume * (float)*CurrentClip->CurrentSample++);
-            OutValue[1] += (i16)(CurrentClipVolume * (float)*CurrentClip->CurrentSample++);
-            OutValue[0] += (i16)(FadingInClipVolume * (float)*FadingInClip->CurrentSample++);
-            OutValue[1] += (i16)(FadingInClipVolume * (float)*FadingInClip->CurrentSample++);
-            ResetOrAdvanceCurrentClipIfFinished(SoundState);
-            if (FadingInClip->CurrentSample == FadingInClip->Wav.OnePastEnd) {
-                ResetClip(FadingInClip);
-            }
+#if DEBUG_BUILD
+            if (DebugMusicOff) {
+                CurrentClip->CurrentSample += 2;
+                FadingInClip->CurrentSample += 2;
+                ResetOrAdvanceCurrentClipIfFinished(SoundState);
+                if (FadingInClip->CurrentSample == FadingInClip->Wav.OnePastEnd) {
+                    ResetClip(FadingInClip);
+                }
+            } 
+            else 
+#endif
+            {
+                OutValue[0] += (i16)(CurrentClipVolume * (float)*CurrentClip->CurrentSample++);
+                OutValue[1] += (i16)(CurrentClipVolume * (float)*CurrentClip->CurrentSample++);
+                OutValue[0] += (i16)(FadingInClipVolume * (float)*FadingInClip->CurrentSample++);
+                OutValue[1] += (i16)(FadingInClipVolume * (float)*FadingInClip->CurrentSample++);
+                ResetOrAdvanceCurrentClipIfFinished(SoundState);
+                if (FadingInClip->CurrentSample == FadingInClip->Wav.OnePastEnd) {
+                    ResetClip(FadingInClip);
+                }
 
-            *SampleOut++ += OutValue[0];
-            *SampleOut++ += OutValue[1];
+                *SampleOut++ += OutValue[0];
+                *SampleOut++ += OutValue[1];
+            }
         }
         SoundState->CurrentClip->Gain = Fade.FinishVolume;
         UpdateFadeState(SoundState, Fade);
@@ -231,12 +240,22 @@ GAME_GET_SOUND_OUTPUT(GameGetSoundOutput)
                                              (float)AFrameIndex / (float)Fade.AFrameIndexToFinishFade, 
                                              Fade.FinishVolume);
 
-            OutValue[0] += (i16)(CurrentClipVolume * (float)*CurrentClip->CurrentSample++);
-            OutValue[1] += (i16)(CurrentClipVolume * (float)*CurrentClip->CurrentSample++);
-            ResetOrAdvanceCurrentClipIfFinished(SoundState);
 
-            *SampleOut++ += OutValue[0];
-            *SampleOut++ += OutValue[1];
+#if DEBUG_BUILD
+            if (DebugMusicOff) {
+                CurrentClip->CurrentSample += 2;
+                ResetOrAdvanceCurrentClipIfFinished(SoundState);
+            } 
+            else 
+#endif
+            {
+                OutValue[0] += (i16)(CurrentClipVolume * (float)*CurrentClip->CurrentSample++);
+                OutValue[1] += (i16)(CurrentClipVolume * (float)*CurrentClip->CurrentSample++);
+                ResetOrAdvanceCurrentClipIfFinished(SoundState);
+
+                *SampleOut++ += OutValue[0];
+                *SampleOut++ += OutValue[1];
+            }
         }
         CurrentClip->Gain = Fade.FinishVolume;
         UpdateFadeState(SoundState, Fade);
@@ -246,12 +265,21 @@ GAME_GET_SOUND_OUTPUT(GameGetSoundOutput)
             for(i32 AFrameIndex = 0; AFrameIndex < SoundBuffer->AFramesToWrite; AFrameIndex++) {
                 i16 OutValue[2] = {0,0};
                 game_music_clip *CurrentClip = SoundState->CurrentClip;
-                OutValue[0] += (i16)(CurrentClip->Gain * (float)*CurrentClip->CurrentSample++);
-                OutValue[1] += (i16)(CurrentClip->Gain * (float)*CurrentClip->CurrentSample++);
-                ResetOrAdvanceCurrentClipIfFinished(SoundState);
+#if DEBUG_BUILD
+                if (DebugMusicOff) {
+                    CurrentClip->CurrentSample += 2;
+                    ResetOrAdvanceCurrentClipIfFinished(SoundState);
+                } 
+                else 
+#endif
+                {
+                    OutValue[0] += (i16)(CurrentClip->Gain * (float)*CurrentClip->CurrentSample++);
+                    OutValue[1] += (i16)(CurrentClip->Gain * (float)*CurrentClip->CurrentSample++);
+                    ResetOrAdvanceCurrentClipIfFinished(SoundState);
 
-                *SampleOut++ += OutValue[0];
-                *SampleOut++ += OutValue[1];
+                    *SampleOut++ += OutValue[0];
+                    *SampleOut++ += OutValue[1];
+                }
             }
         }
     }
