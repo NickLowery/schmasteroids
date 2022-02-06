@@ -36,6 +36,7 @@ struct _memory_arena;
 // Platform debug and intrinsic stuff
 // TODO: Move this out somewhere to keep things cleaner?
 #include <immintrin.h>
+#include <intrin.h>
 #if SCHM_SDL
 #include <emmintrin.h>
 #include <string.h>
@@ -44,8 +45,6 @@ struct _memory_arena;
 #else
 #include <windows.h>
 #if DEBUG_BUILD
-#include <intrin.h>
-// TODO: Is this being used somehow?
 #pragma intrinsic(__rdtsc)
 LARGE_INTEGER _DEBUGPerformanceFrequency;
 bool _Junk_ = QueryPerformanceFrequency(&_DEBUGPerformanceFrequency);
@@ -383,7 +382,6 @@ CheckArenaNotTemporary(memory_arena *Arena)
     Assert(Arena->TempCount == 0);
 }
 
-// TODO: Avoid memset call?
 #define ZeroArray(Array, type) ZeroSize_(Array, ArrayCount(Array)*sizeof(type))
 #define ZeroSize(StartAddress, Size) ZeroSize_(StartAddress, Size)
 inline void ZeroSize_(void* StartAddress, size_t Size)
@@ -428,7 +426,6 @@ typedef struct {
 
 typedef struct {
     light_source ShipLightMin;
-    // TODO: Use this
     float ShipC_LRange;
     light_source SaucerLightBase;
     float SaucerC_LRange;
