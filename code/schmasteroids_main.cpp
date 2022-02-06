@@ -577,37 +577,29 @@ internal void MoveParticle(particle *P, float SecondsElapsed, game_state *GameSt
     MovePosition(&P->Position, SecondsElapsed * P->Velocity, GameState);
 }
 
-// TODO: CLEANUP: Confirm this is never called with anything except the screen rect and compress
-internal void WarpPositionToRect(v2 *Pos, rect Rect)
-{
-    v2 RectDim = Dim(Rect);
-    if(Pos->X > Rect.Right) {
-        do {
-            Pos->X -= RectDim.X;
-        } while (Pos->X > Rect.Right);
-    } else while (Pos->X < Rect.Left) {
-        Pos->X += RectDim.X;
-    }
-    if(Pos->Y > Rect.Bottom) {
-        do {
-            Pos->Y -= RectDim.Y;
-        } while (Pos->Y > Rect.Bottom);
-    } else while (Pos->Y < 0.0f) {
-        Pos->Y += RectDim.Y;
-    }
-    Assert(InRect(*Pos, Rect));
-}
-
 internal void WarpPositionToScreen(v2 *Pos)
 {
-    WarpPositionToRect(Pos, ScreenRect);
+    if(Pos->X > SCREEN_RIGHT) {
+        do {
+            Pos->X -= SCREEN_WIDTH;
+        } while (Pos->X > SCREEN_RIGHT);
+    } else while (Pos->X < SCREEN_LEFT) {
+        Pos->X += SCREEN_WIDTH;
+    }
+    if(Pos->Y > SCREEN_BOTTOM) {
+        do {
+            Pos->Y -= SCREEN_HEIGHT;
+        } while (Pos->Y > SCREEN_BOTTOM);
+    } else while (Pos->Y < SCREEN_TOP) {
+        Pos->Y += SCREEN_HEIGHT;
+    }
+    Assert(InRect(*Pos, ScreenRect));
 }
 
-// TODO: Change to by value
 inline void MovePosition(v2 *Pos, v2 Delta, game_state *GameState)
 {
     *Pos += Delta;
-    WarpPositionToRect(Pos, ScreenRect);
+    WarpPositionToScreen(Pos);
 }
 
 inline void 

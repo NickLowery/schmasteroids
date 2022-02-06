@@ -281,8 +281,7 @@ internal FILETIME Win32GetLastWriteTime(char *Filename)
 }
 
 #define LOOP_RANDOM_SEED 526
-// TODO: Get this hacky nonsense out of here. It's here because it was the quickest and dirtiest
-// way we could think of to make "randomness" the same across loops
+// TODO: We could get rid of this if we had our own PRNG that keeps state in game memory
 
 // TODO: Write game state to memory-mapped file instead of a regular file to speed this up
 // TODO: Record memory and input separately for greater flexibility?
@@ -290,7 +289,7 @@ internal void
 Win32StartRecording(win32_state *WinState, win32_game_code Game, u8 Index) 
 {
 
-    //Game.SeedRandom(LOOP_RANDOM_SEED);
+    Game.SeedRandom(LOOP_RANDOM_SEED);
     Assert(Index < 99);
     Assert(WinState->BuildDirPathLen < MAX_PATH - 9);
     char RecordFilename[9];
