@@ -71,7 +71,7 @@ InitGameState(game_state *GameState, i32 LevelNumber, metagame_state *MetagameSt
     GameState->Level.Number = LevelNumber;
     level *Level = &GameState->Level;
     if (LevelNumber == 1) {
-        GameState->Score = UINT64_MAX - 200;
+        GameState->Score = 0;
         GameState->ExtraLives = 4;
     }
 

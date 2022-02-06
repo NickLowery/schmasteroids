@@ -462,28 +462,31 @@ ShipShoot(game_state *GameState, metagame_state *Metagame)
 
 
 //TODO: There's definitely common code in these SaucerShoot functions that could be compressed.
-internal void
-SaucerShootDumb(game_state *GameState, metagame_state *Metagame) 
+inline void SaucerShoot(metagame_state *Metagame, v2 ShotVector)
 {
+    game_state *GameState = GetGameState(Metagame);
     particle* S = CreateShot(GameState);
-    v2 VectorToShip = ShortestPath(GameState->Saucer.Position, GameState->Ship.Position);
-    S->Velocity = ScaleV2ToMagnitude(VectorToShip, SHOT_ABS_VEL) +
+    S->Velocity = ScaleV2ToMagnitude(ShotVector, SHOT_ABS_VEL) +
         GameState->Saucer.Velocity;
-    v2 ShotOffset = ScaleV2ToMagnitude(VectorToShip, SAUCER_RADIUS);
+    v2 ShotOffset = ScaleV2ToMagnitude(ShotVector, SAUCER_RADIUS);
     S->Position = ShotOffset + GameState->Saucer.Position;
     S->Light = Metagame->LightParams.SaucerShotLightBase;
     S->C_LOriginal = S->Light.ZDistSq;
 
     PlaySound(Metagame, &Metagame->Sounds.SaucerLaser);
     GameState->SaucerShootTimer = GameState->Level.SaucerShootTime;
-
+}
+internal void
+SaucerShootDumb(game_state *GameState, metagame_state *Metagame) 
+{
+    v2 VectorToShip = ShortestPath(GameState->Saucer.Position, GameState->Ship.Position);
+    SaucerShoot(Metagame, VectorToShip);
 }
 
 internal void
 SaucerShootLeading(game_state *GameState, metagame_state *Metagame)
 {
-    // NOTE: For now this ignores warping!!!
-    // TODO: Once this works, factor in warping. Should be relatively simple to use ShortestPath
+    // NOTE: For now this ignores warping!!! Bug or feature?
     // Quadratic equation to find time when shot can hit ship
     v2 RelativeShipPosition = GameState->Ship.Position - GameState->Saucer.Position;
     v2 ShotOffset = ScaleV2ToMagnitude(RelativeShipPosition, SAUCER_RADIUS);
@@ -522,15 +525,7 @@ SaucerShootLeading(game_state *GameState, metagame_state *Metagame)
                 SaucerShootDumb(GameState, Metagame);
             } else {
                 v2 RelShipPositionAtHitTime = RelativeShipPosition + (HitTime * RelativeShipVelocity);
-                particle* S = CreateShot(GameState);
-                S->Velocity = ScaleV2ToMagnitude(RelShipPositionAtHitTime, SHOT_ABS_VEL) + 
-                    GameState->Saucer.Velocity;
-                S->Position = ShotOffset + GameState->Saucer.Position;
-                S->Light = Metagame->LightParams.SaucerShotLightBase;
-                S->C_LOriginal = S->Light.ZDistSq;
-
-                PlaySound(Metagame, &Metagame->Sounds.SaucerLaser);
-                GameState->SaucerShootTimer = GameState->Level.SaucerShootTime;
+                SaucerShoot(Metagame, RelShipPositionAtHitTime);
             }
 
 
