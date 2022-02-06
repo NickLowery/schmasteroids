@@ -23,7 +23,7 @@ MaxStringLength(const char** Strings, u32 StringCount)
 }
 
 internal u32
-SetStringFromNumber(char *String, i32 Number, u32 MaxBytes)
+SetStringFromNumber(char *String, u64 Number, u32 MaxBytes)
 {
     Assert(MaxBytes >= 1);
     // NOTE: We will always end with a null char.
@@ -36,7 +36,7 @@ SetStringFromNumber(char *String, i32 Number, u32 MaxBytes)
 
     Assert(Number > 0);
     u32 DigitCount = 1;
-    u32 Scratch = Number;
+    u64 Scratch = Number;
     while ((Scratch /= 10) > 0) {
         ++DigitCount;
     }

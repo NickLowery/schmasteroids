@@ -25,7 +25,6 @@ PrintFromMinCornerAndGlyphDim(render_buffer *Renderer, metagame_state *Metagame,
                                 light_source *Light, const char* CString,
                                 v2 MinPoint, v2 GlyphDim)
 {
-    // TODO: It seems like this should take a char count?
     Assert(Light);
     rect GlyphRect = RectFromMinCornerAndDimensions(MinPoint, GlyphDim);
     u32 CharCount = StringLength(CString);

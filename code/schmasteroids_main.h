@@ -530,11 +530,10 @@ typedef struct {
     float SaucerShootTime;
     float SaucerCourseChangeTime;
 } level;
-
 typedef struct {
     //PLAYING
     level Level;
-    u32 Score;
+    u64 Score;
     u32 ExtraLives;
     light_source ScoreLight;
     float GameOverTimer;

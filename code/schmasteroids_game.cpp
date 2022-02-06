@@ -30,41 +30,19 @@ CreateParticle(game_state *GameState)
 internal void
 PrintScore(render_buffer *Renderer, game_state *GameState, metagame_state *Metagame, float Alpha)
 {
-    // TODO: Rewrite using SetStringFromNumber
-        float GlyphSpacing = 5.0f;
-        v2 TopRightMargin = V2(5.0f, 5.0f);
-        v2 GlyphSize = V2(30.0f, 30.0f*Metagame->GlyphYOverX);
-        u32 DigitsInScore = 1;
-        u32 TestScore = GameState->Score;
-        while ((TestScore /= 10) > 0) {
-            ++DigitsInScore;
-        }
-        Assert(TopRightMargin.X + 
-                (DigitsInScore * GlyphSize.X) + 
-                ((DigitsInScore - 1) * GlyphSpacing) < SCREEN_WIDTH);
-        rect Rect = {};
-        Rect.Top = TopRightMargin.Y;
-        Rect.Right = SCREEN_WIDTH - TopRightMargin.X;
-        Rect.Bottom = Rect.Top + GlyphSize.Y;
-        Rect.Left = Rect.Right - GlyphSize.X;
-        u32 ScoreToDraw = GameState->Score;
-        if(ScoreToDraw == 0)
-        {
-            Assert(Rect.Left > 0);
-            PushGlyph(Renderer, Metagame->Digits, GameState->ScoreLight, Rect, Alpha); 
-        }
-        else 
-        {
-            while (ScoreToDraw > 0)
-            {
-                Assert(Rect.Left > 0);
-                u32 Digit = ScoreToDraw % 10;
-                PushGlyph(Renderer, Metagame->Digits + Digit, GameState->ScoreLight, Rect, Alpha);
-                ScoreToDraw /= 10;
-                Rect.Right -= (GlyphSpacing + GlyphSize.X);
-                Rect.Left -= (GlyphSpacing + GlyphSize.X);
-            }
-        }
+#define MAX_SCORE_DIGITS 20
+#define MAX_SCORE_SPACES (MAX_SCORE_DIGITS - 1)
+    char String[MAX_SCORE_DIGITS + 1];
+    // UINT64_MAX is a 20 digit decimal number, plus one for null byte
+    u32 DigitsInScore = SetStringFromNumber(String, GameState->Score, MAX_SCORE_DIGITS + 1);
+    float Margin = CalculateLightMargin(&GameState->ScoreLight);
+    float GlyphWidth = 30.0f;
+    // NOTE: This is small enough that we will not run out of screen 
+    // space, if changing for some reason keep this in mind
+    v2 GlyphDim = V2(GlyphWidth, Metagame->GlyphYOverX*GlyphWidth);
+    float ActualWidth = (DigitsInScore + ((DigitsInScore - 1) * GlyphSpacingOverWidth)) * GlyphWidth;
+    v2 MinPoint = V2(SCREEN_RIGHT - Margin - ActualWidth, Margin);
+    PrintFromMinCornerAndGlyphDim(Renderer, Metagame, &GameState->ScoreLight, String, MinPoint, GlyphDim);
 }
 
 inline void 
@@ -93,7 +71,7 @@ InitGameState(game_state *GameState, i32 LevelNumber, metagame_state *MetagameSt
     GameState->Level.Number = LevelNumber;
     level *Level = &GameState->Level;
     if (LevelNumber == 1) {
-        GameState->Score = 0;
+        GameState->Score = UINT64_MAX - 200;
         GameState->ExtraLives = 4;
     }
 
