@@ -1,5 +1,5 @@
-#include "schmasteroids_pixelateddraw.h"
-#include "schmasteroids_editor.h"
+#include "schm_pixelateddraw.h"
+#include "schm_editor.h"
 
 inline editor_state *
 GetEditorState(metagame_state *Metagame)

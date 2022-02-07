@@ -210,7 +210,7 @@ PushPixelGlyph(render_buffer *RenderBuffer, color Color, glyph *Glyph, rect Rect
     Entry->Glyph = Glyph;
     Entry->Rect = Rect;
 }
-#include "schmasteroids_pixelateddraw.h"
+#include "schm_pixelateddraw.h"
 #endif
 
 

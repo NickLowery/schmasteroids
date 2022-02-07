@@ -52,9 +52,9 @@ static float DEBUGPerfFrequency = (float)_DEBUGPerformanceFrequency.QuadPart;
 #endif
 #endif
 
-#include "schmasteroids_math.h"
-#include "schmasteroids_math.cpp"
-#include "schmasteroids_strings.h"
+#include "schm_math.h"
+#include "schm_math.cpp"
+#include "schm_strings.h"
 #include "schm_sound.h"
 
 #define Kilobytes(n) (n*1024LL)
@@ -69,8 +69,8 @@ static float DEBUGPerfFrequency = (float)_DEBUGPerformanceFrequency.QuadPart;
 #define ArrayCount(Array) (sizeof(Array)/sizeof((Array)[0]))
 #define MAX_VERTICES 8
 
-#include "schmasteroids_color.h"
-#include "schmasteroids_start_screen.h"
+#include "schm_color.h"
+#include "schm_start_screen.h"
 // Game constants
 #define MAX_ABS_SHIP_VEL 180.0f
 #define SHIP_ABS_ACCEL 240.0f
@@ -555,7 +555,7 @@ typedef struct {
 } game_state;
 
 #if DEBUG_BUILD
-#include "schmasteroids_editor.h"
+#include "schm_editor.h"
 #endif
 
 typedef struct metagame_state_ {

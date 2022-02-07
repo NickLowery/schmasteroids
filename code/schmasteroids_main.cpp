@@ -1,21 +1,21 @@
 #define internal static
-#include "schmasteroids_main.h"
+#include "schm_main.h"
 
 // NOTE: Always include, defines macros as nothing if we're not in benchmark mode
 #include "schm_bench.h"
 #include "schm_sound.cpp"
-#include "schmasteroids_hsl_simd1.h"
+#include "schm_hsl_simd1.h"
 #include "schm_render_buffer.h"
 
 #include "schm_glyph.cpp"
-#include "schmasteroids_game.cpp"
-#include "schmasteroids_titles.cpp"
+#include "schm_game.cpp"
+#include "schm_titles.cpp"
 
 #if RENDER_BENCHMARK
-#include "schmasteroids_render_benchmark.h"
+#include "schm_render_benchmark.h"
 #endif
 #if DEBUG_BUILD
-#include "schmasteroids_editor.cpp"
+#include "schm_editor.cpp"
 #endif
 
 inline game_state *
