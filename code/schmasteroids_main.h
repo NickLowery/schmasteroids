@@ -36,7 +36,6 @@ struct _memory_arena;
 // Platform debug and intrinsic stuff
 // TODO: Move this out somewhere to keep things cleaner?
 #include <immintrin.h>
-#include <intrin.h>
 #if SCHM_SDL
 #include <emmintrin.h>
 #include <string.h>
@@ -44,6 +43,7 @@ struct _memory_arena;
 #define sprintf_s snprintf
 #else
 #include <windows.h>
+#include <intrin.h>
 #if DEBUG_BUILD
 #pragma intrinsic(__rdtsc)
 LARGE_INTEGER _DEBUGPerformanceFrequency;
