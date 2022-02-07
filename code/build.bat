@@ -53,5 +53,5 @@ echo WAITING FOR PDB > lock.tmp
 cl %SharedCompilerFlags% -LD %MainSource%  /link -incremental:no -opt:ref -PDB:schmasteroids_main_%dt%.pdb /DLL /EXPORT:GameGetSoundOutput /EXPORT:GameUpdateAndRender /EXPORT:GameInitialize /EXPORT:SeedRandom
 
 del lock.tmp
-cl %SharedCompilerFlags% ..\code\win32-nicks-game.cpp /link %SharedLinkerFlags%
+cl %SharedCompilerFlags% ..\code\win32_schmasteroids.cpp /link %SharedLinkerFlags%
 popd

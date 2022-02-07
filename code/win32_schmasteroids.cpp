@@ -7,8 +7,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "schmasteroids_main.h"
-#include "win32-nicks-game.h"
+#include "schm_main.h"
+#include "win32_schmasteroids.h"
 
 static bool GlobalRunning;
 
