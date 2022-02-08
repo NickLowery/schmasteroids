@@ -1,5 +1,5 @@
 @echo off
-set Mode=Release
+set Mode=HSL_DebugOptimized
 
 set Preprocess=No
 

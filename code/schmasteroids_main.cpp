@@ -299,8 +299,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                         SetUpLevel(Metagame, 1);
                         SetUpLevelStartScreen(Metagame, 1);
                     } break;
-                    case (GameMode_Playing): {
-                    } break;
+                    case (GameMode_Playing): 
+                    case (GameMode_EndScreen):
+                    break;
                     InvalidDefault;                        
                 }
                 Metagame->CurrentGameMode = Metagame->NextGameMode;
@@ -333,14 +334,23 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                 UpdateAndDrawGameplay(GameState, &OutputRender, Input, Metagame, CurrentSceneAlpha);
                 if(GameState->LevelComplete && !Metagame->NextGameMode) {
                     SetModeChangeTimer(Metagame, 3.0f);
-                    SetUpLevelStartScreen(Metagame, GameState->Level.Number);
-                    Metagame->NextGameMode = GameMode_LevelStartScreen;
+                    if (GameState->Level.Number > MAX_LEVEL) {
+                        SetUpEndScreen(Metagame);
+                        Metagame->NextGameMode = GameMode_EndScreen;
+                    } else {
+                        SetUpLevelStartScreen(Metagame, GameState->Level.Number);
+                        Metagame->NextGameMode = GameMode_LevelStartScreen;
+                    }
                 } 
 #endif
             } break;
+            case (GameMode_EndScreen): {
+                DrawEndScreen(Metagame, &OutputRender, Input, CurrentSceneAlpha);
+            } break;
             case (GameMode_None): {
                 InvalidCodePath;
-            }
+            } break;
+            
             InvalidDefault;
         }
         switch(Metagame->NextGameMode) 
@@ -352,6 +362,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             } break;
             case (GameMode_Playing): {
                 UpdateAndDrawGameplay(GameState, &OutputRender, Input, Metagame, NextSceneAlpha);
+            } break;
+            case (GameMode_EndScreen): {
+                DrawEndScreen(Metagame, &OutputRender, Input, NextSceneAlpha);
             } break;
             case (GameMode_None): break;
             InvalidDefault;

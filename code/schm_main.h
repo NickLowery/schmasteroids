@@ -512,6 +512,7 @@ enum game_mode {
     GameMode_StartScreen,
     GameMode_LevelStartScreen,
     GameMode_Playing,
+    GameMode_EndScreen,
 };
 
 typedef struct {
@@ -617,6 +618,9 @@ typedef struct metagame_state_ {
     start_screen_state StartScreenState;
     float InstructionsY;
     menu_options StartMenuOption;
+    // END SCREEN
+    float EndScreenLightH;
+    
 
 #if DEBUG_BUILD
     edit_mode EditMode;

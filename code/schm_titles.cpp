@@ -46,6 +46,41 @@ UpdateAndDrawLevelStartScreen(metagame_state *Metagame, render_buffer *Renderer,
             SecondLineMinCorner, GlyphDim);
 }
 
+internal void
+SetUpEndScreen(metagame_state *Metagame)
+{
+    Metagame->EndScreenLightH = 0.0f;
+}
+
+internal void
+DrawEndScreen(metagame_state *Metagame, render_buffer *Renderer, game_input *Input, float SceneAlpha = 255) {
+    game_state *GameState = GetGameState(Metagame);
+    light_source Light;
+    Light.C_L = 5.0f;
+    Light.S = 0.8f;
+    Light.ZDistSq = 6.0f;
+    Metagame->EndScreenLightH += 0.5f * Input->SecondsElapsed;
+    if (Metagame->EndScreenLightH > 1.0f) {Metagame->EndScreenLightH -= 1.0f;}
+    Light.H = Metagame->EndScreenLightH;
+
+    float Margin = CalculateLightMargin(&Light);
+    Light.C_L *= SceneAlpha;
+    PrintFromXBoundsAndBottom(Renderer, Metagame, &Light, "congratulations",
+                                SCREEN_LEFT + Margin, SCREEN_RIGHT - Margin, ScreenCenter.Y - Margin*0.5f);
+
+    Light.H += 0.1f;
+    if (Light.H >= 1.0f) {Light.H -= 1.0f;}
+    v2 MaxCorner = PrintFromXBoundsAndTop(Renderer, Metagame, &Light, "you must be some kind of wizard",
+                                SCREEN_LEFT + Margin, SCREEN_RIGHT - Margin, ScreenCenter.Y + Margin*0.5f);
+    Light.H += 0.1f;
+    if (Light.H >= 1.0f) {Light.H -= 1.0f;}
+    PrintFromXBoundsAndTop(Renderer, Metagame, &Light, "you win",
+                                SCREEN_LEFT + Margin, SCREEN_RIGHT - Margin, MaxCorner.Y + Margin);
+
+
+    PrintScore(Renderer, GameState, Metagame, SceneAlpha);
+}
+
 inline void 
 PrintMenu(render_buffer *Renderer, metagame_state *Metagame, float MenuC_LFraction)
 {

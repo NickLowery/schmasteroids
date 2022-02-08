@@ -55,6 +55,7 @@ PrintScore(render_buffer *Renderer, game_state *GameState, metagame_state *Metag
     v2 GlyphDim = V2(GlyphWidth, Metagame->GlyphYOverX*GlyphWidth);
     float ActualWidth = (DigitsInScore + ((DigitsInScore - 1) * GlyphSpacingOverWidth)) * GlyphWidth;
     v2 MinPoint = V2(SCREEN_RIGHT - Margin - ActualWidth, Margin);
+    GameState->ScoreLight.C_L = Alpha;
     PrintFromMinCornerAndGlyphDim(Renderer, Metagame, &GameState->ScoreLight, String, MinPoint, GlyphDim);
 }
 
@@ -146,7 +147,9 @@ UpdateAndDrawGameplay(game_state *GameState, render_buffer *Renderer, game_input
     {
         GameState->Level.Number++;
         GameState->LevelComplete = true;
-        StartMusicCrossfade(Metagame, &Metagame->Sounds.OneBarKick, 2.0f);
+        if (GameState->Level.Number <= MAX_LEVEL) {
+            StartMusicCrossfade(Metagame, &Metagame->Sounds.OneBarKick, 2.0f);
+        }
     }
 
     if (GameState->ShipExists) {
