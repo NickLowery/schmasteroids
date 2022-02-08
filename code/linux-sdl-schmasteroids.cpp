@@ -223,20 +223,17 @@ PLATFORM_DEBUG_READ_FILE(LinuxSDLDebugReadFile)
         return BytesRead;
     }
 }
+
 PLATFORM_DEBUG_WRITE_FILE(LinuxSDLDebugWriteFile)
 {
     // TODO: Implement if we need debug file writing
 }
-PLATFORM_FREE_FILE_MEMORY(LinuxSDLFreeFileMemory) 
-{
-    if (Memory) {
-        free(Memory);
-    }
-}
+
 PLATFORM_DEBUG_SAVE_FRAMEBUFFER_AS_BMP(LinuxSDLDebugSaveFramebufferAsBMP)
 {
     // TODO: Implement this if we need to save framebuffer
 }
+
 PLATFORM_QUIT(LinuxSDLQuit)
 {
     GlobalRunning = false;
@@ -374,7 +371,6 @@ int main(int argc, char *argv[])
     // Create pointers to platform services
     GameMemory.PlatformLoadWav = &LinuxSDLLoadWav;
     GameMemory.PlatformGetWavLoadInfo = &LinuxSDLGetWavLoadInfo;
-    GameMemory.PlatformFreeFileMemory = &LinuxSDLFreeFileMemory;
     GameMemory.PlatformDebugReadFile = &LinuxSDLDebugReadFile;
     GameMemory.PlatformDebugWriteFile = &LinuxSDLDebugWriteFile;
     GameMemory.PlatformDebugSaveFramebufferAsBMP = &LinuxSDLDebugSaveFramebufferAsBMP;
