@@ -30,10 +30,12 @@ Floor(float F)
     return Result;
 }
 
-inline i32
-Ceil(float F)
+constexpr inline i32 Ceil(float F)
 {
-    i32 Result = (i32)ceilf(F);
+    i32 Result = (i32)F;
+    if ((float)Result != F && (F > 0)) {
+        ++Result;
+    }
     return Result;
 }
 

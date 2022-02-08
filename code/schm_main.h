@@ -83,10 +83,6 @@ static float DEBUGPerfFrequency = (float)_DEBUGPerformanceFrequency.QuadPart;
 #define SHIP_PARTICLES 100
 #define SHIP_COLLISION_RADIUS 15.0f
 
-#define MAX_LEVEL 13 
-#define MAX_ASTEROIDS (((1 + (2*(MAX_LEVEL-1))) * 6) + 1) // Maximum number of asteroids that could appear, 
-                                                          // plus one for the temp that exists during 
-                                                          // ExplodeAsteroid
 #define MAX_ASTEROID_SIZE 2 //There are 3 sizes of asteroids, 2 is the largest
 //#define INIT_ASTEROID_CT 1
 //#define INIT_ASTEROID_MAX_ABS_VEL 70.0f
@@ -103,7 +99,6 @@ static float DEBUGPerfFrequency = (float)_DEBUGPerformanceFrequency.QuadPart;
 //#define SAUCER_COURSE_CHANGE_TIME 2.0f
 //#define SAUCER_SHOOT_TIME 1.5f
 
-#define MAX_SHOTS 8
 #define SHOT_ABS_VEL 250.0f
 #define SHOT_COOLDOWN_TIME 0.15f
 #define SHOT_LIFETIME 1.0f
@@ -468,7 +463,6 @@ typedef struct {
 } asteroid;
 
 typedef struct {
-    bool32 Exists;
     v2 Position;
     v2 Velocity;
     light_source Light;
@@ -521,7 +515,7 @@ enum game_mode {
 };
 
 typedef struct {
-    i32 Number;
+    u32 Number;
     i32 StartingAsteroids;
     float AsteroidMaxSpeed;
     float AsteroidMinSpeed;
@@ -530,6 +524,34 @@ typedef struct {
     float SaucerShootTime;
     float SaucerCourseChangeTime;
 } level;
+
+constexpr inline u32 
+CalculateStartingAsteroids(u32 LevelNumber)
+{
+    u32 Result = 1 + (2*(LevelNumber-1));
+    return Result;
+}
+
+constexpr inline float 
+CalculateSaucerShootTime(u32 LevelNumber)
+{
+    float Result = 2.0f * Pow(0.9f, (LevelNumber-1));
+    return Result; 
+}
+
+constexpr inline u32
+CalculateMaxShotsOnScreen(u32 LevelNumber)
+{
+    u32 Result = Ceil(SHOT_LIFETIME / SHOT_COOLDOWN_TIME) + 
+                 Ceil(SHOT_LIFETIME / CalculateSaucerShootTime(LevelNumber));
+    return Result;
+}
+
+#define MAX_LEVEL 13 
+#define MAX_ASTEROIDS ((CalculateStartingAsteroids(MAX_LEVEL) * 6) + 1) 
+#define MAX_SHOTS (CalculateMaxShotsOnScreen(MAX_LEVEL))
+// Maximum number of asteroids that could appear,  plus one for the temp that exists during  ExplodeAsteroid
+
 typedef struct {
     //PLAYING
     level Level;
@@ -547,12 +569,12 @@ typedef struct {
     float ShipRespawnTimer;
     bool32 LevelComplete;
 
-    // TODO: Keep these arrays compact. It's better to check against a count than to be loading in extra 
-    // memory, I think.
     asteroid Asteroids[MAX_ASTEROIDS];
     u32 AsteroidCount;
     particle Shots[MAX_SHOTS];
+    u32 ShotCount;
     particle Particles[MAX_PARTICLES];
+    u32 ParticleCount;
     particle_block *FirstFreeParticleBlock;
     particle_group *FirstParticleGroup;
     particle_group *FirstFreeParticleGroup;

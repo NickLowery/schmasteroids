@@ -36,7 +36,7 @@ NormalizeToRange(float Min, float Val, float Max)
     return Result;
 }
 
-inline float 
+constexpr inline float 
 Pow(float Base, u32 Exp)
 {
     float Result = 1.0f;

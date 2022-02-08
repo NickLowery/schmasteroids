@@ -439,12 +439,9 @@ Collide(particle *P, object *O, game_state *GameState)
 inline particle*
 CreateShot(game_state *GameState)
 {
-    particle* Result = GameState->Shots;
-    particle* OOBShot = Result + MAX_SHOTS;
-    while(Result->Exists && Result < OOBShot) {Result++;}
-    Assert(Result < OOBShot);
+    particle* Result = &GameState->Shots[GameState->ShotCount++];
+    Assert(GameState->ShotCount < MAX_SHOTS);
 
-    Result->Exists = true;
     Result->tLMod = 0.0f;
     Result->SecondsToLive = SHOT_LIFETIME;
     return Result;
@@ -798,19 +795,17 @@ MoveAsteroids(float SecondsElapsed, game_state *GameState)
 internal void
 MoveShots(float SecondsElapsed, game_state *GameState)
 {
-    for (u32 SIndex = 0; SIndex < (u32)ArrayCount(GameState->Shots); SIndex++) {
+    for (u32 SIndex = 0; SIndex < GameState->ShotCount; SIndex++) {
         particle *ThisShot = &GameState->Shots[SIndex];
-        if (ThisShot->Exists) {
-            if (UpdateAndCheckTimer(&ThisShot->SecondsToLive, SecondsElapsed)) {
-                ThisShot->Exists = false;
-            } else {
-                ThisShot->tLMod += 16.0f * SecondsElapsed;
-                if (ThisShot->tLMod > 2.0f*PI) {
-                    ThisShot->tLMod -= 2.0f*PI;
-                }
-                ThisShot->Light.C_L = ThisShot->C_LOriginal + (0.5f*Sin(ThisShot->tLMod));
-                MoveParticle(ThisShot, SecondsElapsed, GameState);
+        if (UpdateAndCheckTimer(&ThisShot->SecondsToLive, SecondsElapsed)) {
+            RemoveShot(GameState, SIndex);
+        } else {
+            ThisShot->tLMod += 16.0f * SecondsElapsed;
+            if (ThisShot->tLMod > 2.0f*PI) {
+                ThisShot->tLMod -= 2.0f*PI;
             }
+            ThisShot->Light.C_L = ThisShot->C_LOriginal + (0.5f*Sin(ThisShot->tLMod));
+            MoveParticle(ThisShot, SecondsElapsed, GameState);
         }
     }
 }
@@ -819,15 +814,13 @@ internal void
 MoveParticles(float SecondsElapsed, game_state *GameState)
 {
     // Move ungrouped particles
-    for (u32 PIndex = 0; PIndex < (u32)ArrayCount(GameState->Particles); PIndex++) {
+    for (u32 PIndex = 0; PIndex < GameState->ParticleCount; PIndex++) {
         particle *ThisParticle = &GameState->Particles[PIndex];
-        if (ThisParticle->Exists) {
-            if (UpdateAndCheckTimer(&ThisParticle->SecondsToLive, SecondsElapsed)) {
-                ThisParticle->Exists = false;
-            } else {
-                ThisParticle->Light.C_L = ThisParticle->C_LOriginal * (ThisParticle->SecondsToLive / PARTICLE_LIFETIME);
-                MoveParticle(ThisParticle, SecondsElapsed, GameState);
-            }
+        if (UpdateAndCheckTimer(&ThisParticle->SecondsToLive, SecondsElapsed)) {
+            RemoveParticle(GameState, PIndex);
+        } else {
+            ThisParticle->Light.C_L = ThisParticle->C_LOriginal * (ThisParticle->SecondsToLive / PARTICLE_LIFETIME);
+            MoveParticle(ThisParticle, SecondsElapsed, GameState);
         }
     }
     // Move particles in groups

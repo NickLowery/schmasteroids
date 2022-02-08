@@ -10,19 +10,34 @@ PushAsteroids(render_buffer *Renderer, game_state *GameState, float Alpha = 1.0f
 // NOTE: Will return null if there is no space for more particles
 // NOTE: This is to be used for particles that don't make sense to render as a group, as of this moment,
 // that's the ship's exhaust only
-internal particle*
+inline particle*
 CreateParticle(game_state *GameState)
 {
-    particle *Result = GameState->Particles;
-    while(Result->Exists) {Result++;}
-    if (Result - GameState->Particles < MAX_PARTICLES) {
-
+    particle *Result;
+    if (GameState->ParticleCount < MAX_PARTICLES) {
+        Result = GameState->Particles + GameState->ParticleCount++;
         Result->SecondsToLive = PARTICLE_LIFETIME;
-        Result->Exists = true;
     } else {
         Result = 0;
     }
     return Result;
+}
+
+inline void RemoveShot(game_state *GameState, u32 ShotIndex) {
+    if (ShotIndex != GameState->ShotCount - 1) {
+        memcpy(&GameState->Shots[ShotIndex], &GameState->Shots[--GameState->ShotCount], sizeof(particle));
+    } else {
+        --GameState->ShotCount;
+    }
+}
+
+inline void RemoveParticle(game_state *GameState, u32 ParticleIndex) {
+    if (ParticleIndex != GameState->ParticleCount - 1) {
+        memcpy(&GameState->Particles[ParticleIndex], 
+                &GameState->Particles[--GameState->ParticleCount], sizeof(particle));
+    } else {
+        --GameState->ParticleCount;
+    }
 }
 
 internal void
@@ -53,8 +68,10 @@ SpawnShip(game_state *GameState)
     GameState->Ship.Spin = 0.0f;
     GameState->ShipExists = true;
 }
+
+
 inline void
-InitGameState(game_state *GameState, i32 LevelNumber, metagame_state *MetagameState)
+InitGameState(game_state *GameState, u32 LevelNumber, metagame_state *MetagameState)
 {
     if (GameState->GameArena.Base) {
         ResetArena(&GameState->GameArena);
@@ -74,12 +91,12 @@ InitGameState(game_state *GameState, i32 LevelNumber, metagame_state *MetagameSt
     }
 
     if (LevelNumber > 0) {
-        Level->StartingAsteroids = 1 + (2*(LevelNumber-1));
+        Level->StartingAsteroids = CalculateStartingAsteroids(LevelNumber);
         Level->AsteroidMaxSpeed = 70.0f + (5.0f*(LevelNumber-1));
         Level->AsteroidMinSpeed = 20.0f + (2.0f*(LevelNumber-1));
         Level->SaucerSpawnTime = 20.0f * Pow(0.8f, (LevelNumber-1));
         Level->SaucerSpeed = 50.0f + (10.0f * (LevelNumber-1));
-        Level->SaucerShootTime = 2.0f * Pow(0.9f, (LevelNumber-1));
+        Level->SaucerShootTime = CalculateSaucerShootTime(LevelNumber);
         Level->SaucerCourseChangeTime = 3.0f * Pow(0.9f, (LevelNumber-1));
     } else {
         InvalidCodePath;
@@ -230,19 +247,15 @@ UpdateAndDrawGameplay(game_state *GameState, render_buffer *Renderer, game_input
     // COLLISIONS
 
     // Collide shots
-    for (int SIndex = 0; SIndex < MAX_SHOTS; ++SIndex) {
+    for (u32 SIndex = 0; SIndex < GameState->ShotCount; ++SIndex) {
         particle* ThisShot = &GameState->Shots[SIndex];
-        if (ThisShot->Exists) {
-            if (GameState->SaucerExists && Collide(ThisShot, &GameState->Saucer, GameState)) {
-                ExplodeSaucer(GameState, Metagame);
-                ThisShot->Exists = false;
-                break;
-            }
-            if (GameState->ShipExists && Collide(ThisShot, &GameState->Ship, GameState)) {
-                ExplodeShip(GameState, Metagame);
-                ThisShot->Exists = false;
-                break;
-            }
+        if (GameState->SaucerExists && Collide(ThisShot, &GameState->Saucer, GameState)) {
+            ExplodeSaucer(GameState, Metagame);
+            RemoveShot(GameState, SIndex);
+        }
+        if (GameState->ShipExists && Collide(ThisShot, &GameState->Ship, GameState)) {
+            ExplodeShip(GameState, Metagame);
+            RemoveShot(GameState, SIndex);
         }
     }
     // Collide asteroids
@@ -253,14 +266,12 @@ UpdateAndDrawGameplay(game_state *GameState, render_buffer *Renderer, game_input
         if (GameState->SaucerExists && Collide(&GameState->Asteroids[AIndex].O, &GameState->Saucer, GameState)) {
             ExplodeSaucer(GameState, Metagame);
         }
-        for (int SIndex = 0; SIndex < MAX_SHOTS; ++SIndex) {
+        for (u32 SIndex = 0; SIndex < GameState->ShotCount; ++SIndex) {
             particle* ThisShot = &GameState->Shots[SIndex];
-            if (ThisShot->Exists) {
-                if (Collide(ThisShot, &GameState->Asteroids[AIndex].O, GameState)) {
-                    ExplodeAsteroid(&GameState->Asteroids[AIndex], GameState, Metagame);
-                    ThisShot->Exists = false;
-                    break;
-                }
+            if (Collide(ThisShot, &GameState->Asteroids[AIndex].O, GameState)) {
+                ExplodeAsteroid(&GameState->Asteroids[AIndex], GameState, Metagame);
+                RemoveShot(GameState, SIndex);
+                break;
             }
         }
     }
@@ -275,17 +286,11 @@ UpdateAndDrawGameplay(game_state *GameState, render_buffer *Renderer, game_input
 
     BENCH_START_COUNTING_CYCLES_USECONDS(DrawGame)
     PushAsteroids(Renderer, GameState, SceneAlpha);
-    for (u32 SIndex = 0; SIndex < (u32)ArrayCount(GameState->Shots); SIndex++) {
-        particle *ThisParticle = &GameState->Shots[SIndex];
-        if (ThisParticle->Exists) {
-            PushParticle(Renderer, ThisParticle, SceneAlpha);
-        }
+    for (u32 SIndex = 0; SIndex < GameState->ShotCount; ++SIndex) {
+        PushParticle(Renderer, &GameState->Shots[SIndex], SceneAlpha);
     }
-    for (u32 PIndex = 0; PIndex < (u32)ArrayCount(GameState->Particles); PIndex++) {
-        particle* P = &GameState->Particles[PIndex];
-        if (P->Exists) {
-            PushParticle(Renderer, P, SceneAlpha);
-        }
+    for (u32 PIndex = 0; PIndex < GameState->ParticleCount; PIndex++) {
+        PushParticle(Renderer, &GameState->Particles[PIndex], SceneAlpha);
     }
 
     for (particle_group *Group = GameState->FirstParticleGroup;
