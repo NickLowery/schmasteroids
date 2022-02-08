@@ -27,7 +27,7 @@ SetUpRenderBenchmark(game_state *GameState, metagame_state *Metagame)
     Level->SaucerShootTime = 2.0f;
     Level->SaucerCourseChangeTime = 3.0f;
 
-    GameState->Ship.Exists = false;
+    GameState->ShipExists = false;
     ZeroArray(GameState->Asteroids, asteroid);
     GameState->AsteroidCount = 0;
     ZeroArray(GameState->Shots, particle);
@@ -78,14 +78,14 @@ SetUpRenderBenchmark(game_state *GameState, metagame_state *Metagame)
         A->O.Heading = RandHeading();
         A->O.Spin = RandFloatRange(-INIT_ASTEROID_MAX_SPIN, INIT_ASTEROID_MAX_SPIN);
     }
-    GameState->Saucer.Exists = false;
+    GameState->SaucerExists = false;
 }
 
 internal void
 UpdateAndDrawRenderBenchmark(metagame_state *Metagame, game_memory *GameMemory, render_buffer *Renderer, game_input *Input)
 {
     game_state *GameState = GetGameState(Metagame);
-    GlobalFramesToRender = 150;
+    GlobalFramesToRender = 200;
 
     float dTime = Input->SecondsElapsed;
 
@@ -96,11 +96,9 @@ UpdateAndDrawRenderBenchmark(metagame_state *Metagame, game_memory *GameMemory, 
         BENCH_START_COUNTING_CYCLES_USECONDS(UpdateGame)
         MoveAsteroids(dTime, GameState);
         // Explode an asteroid each frame so we are testing particles too
-        i32 AIndex = 0;
-        while (!GameState->Asteroids[AIndex].O.Exists && AIndex < ArrayCount(GameState->Asteroids)) {
-            ++AIndex;
+        if (GameState->AsteroidCount > 0) {
+            ExplodeAsteroid(&GameState->Asteroids[0], GameState, Metagame);
         }
-        ExplodeAsteroid(&GameState->Asteroids[AIndex], GameState, Metagame);
 
         MoveParticles(dTime, GameState);
         
