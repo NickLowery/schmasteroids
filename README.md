@@ -3,20 +3,21 @@
 
 Schmasteroids is a learning project to develop a simple game from scratch in C++.
 
-It is currently for Windows only and can be downloaded from [www.nicklowerytheprogrammer.com/schmasteroids](www.nicklowerytheprogrammer.com/schmasteroids).
+The website for the game is at [www.nicklowerytheprogrammer.com/schmasteroids](www.nicklowerytheprogrammer.com/schmasteroids).
 
 ### Current Features
 - Optimized software-rendered vector display-esque graphics
 - Sound system that allows synchronization of graphical elements with musical beat
 - Very dangerous aliens
-- Written from scratch in C++, currently depends only on C stdlib and Windows system calls
+- Written from scratch in C++, Windows version depends only on C stdlib and Windows system calls
 
-### Features I Hope To Add Eventually
-- Port for Linux and Mac
+### Features I Hope To Add
+- Mac and Linux versions (SDL platform layer is working, I need to figure out how to do binary distribution)
 - Controller support
-- Further optimization
+- Further optimization so the game can run at a higher framerate
 - Further graphical flourishes
 - Better collision detection
+
 - Etc.
 
 **Special thanks to Casey Muratori for his Handmade Hero series, which is a huge source of inspiration and educational resources for this project**
