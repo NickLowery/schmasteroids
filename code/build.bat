@@ -24,8 +24,6 @@ if %Mode%==RenderBenchmark (
 ) else if %Mode%==HSL_DebugOptimized (
     set SharedCompilerFlags=-Z7 -Zo -FC -MT -nologo -GR- -O2 -Oi -W4 -WX -wd4189 -wd4201 -wd4100 -wd4505 ^
 -DDEBUG_BUILD=1 -DASSERTIONS=1 -DHSL_COLOR=1
-) else if %Mode%==Pixel_Release (
-    set SharedCompilerFlags=-Z7 -FC -MT -nologo -GR- -O2 -Oi -W4 -WX -wd4189 -wd4201 -wd4100 -wd4505
 ) else if %Mode%==CreateGameBenchmark (
     set SharedCompilerFlags=-Z7 -FC -MT -nologo -GR- -O2 -Oi -W4 -WX -wd4189 -wd4201 -wd4100 -wd4505 ^
 -DDEBUG_BUILD=1 -DCREATE_GAME_BENCHMARK=1 -DHSL_COLOR=1

@@ -36,20 +36,26 @@ struct _memory_arena;
 // Platform debug and intrinsic stuff
 // TODO: Move this out somewhere to keep things cleaner?
 #include <immintrin.h>
+
 #if SCHM_SDL
+
 #include <emmintrin.h>
 #include <string.h>
 // TODO: Do this in a nicer way and only define for DEBUG_BUILD
 #define sprintf_s snprintf
+
 #else
+
 #include <windows.h>
 #include <intrin.h>
+
 #if DEBUG_BUILD
 #pragma intrinsic(__rdtsc)
 LARGE_INTEGER _DEBUGPerformanceFrequency;
 bool _Junk_ = QueryPerformanceFrequency(&_DEBUGPerformanceFrequency);
 static float DEBUGPerfFrequency = (float)_DEBUGPerformanceFrequency.QuadPart;
 #endif
+
 #endif
 
 #include "schm_math.h"
@@ -67,7 +73,6 @@ static float DEBUGPerfFrequency = (float)_DEBUGPerformanceFrequency.QuadPart;
 #define GAME_MEMORY_SIZE (PERMANENT_STORE_SIZE + TRANSIENT_STORE_SIZE)
 
 #define ArrayCount(Array) (sizeof(Array)/sizeof((Array)[0]))
-#define MAX_VERTICES 8
 
 #include "schm_color.h"
 #include "schm_start_screen.h"
@@ -78,9 +83,10 @@ static float DEBUGPerfFrequency = (float)_DEBUGPerformanceFrequency.QuadPart;
 #define SHIP_PARTICLES 100
 #define SHIP_COLLISION_RADIUS 15.0f
 
-#define MAX_ASTEROIDS 100 
-//TODO: Calculate MAX_ASTEROIDS from how we explode the asteroids? There needs to be one extra since an extra
-//will exist while exploding
+#define MAX_LEVEL 13 
+#define MAX_ASTEROIDS (((1 + (2*(MAX_LEVEL-1))) * 6) + 1) // Maximum number of asteroids that could appear, 
+                                                          // plus one for the temp that exists during 
+                                                          // ExplodeAsteroid
 #define MAX_ASTEROID_SIZE 2 //There are 3 sizes of asteroids, 2 is the largest
 //#define INIT_ASTEROID_CT 1
 //#define INIT_ASTEROID_MAX_ABS_VEL 70.0f
@@ -121,6 +127,7 @@ static float DEBUGPerfFrequency = (float)_DEBUGPerformanceFrequency.QuadPart;
 #define SCREEN_BOTTOM SCREEN_HEIGHT
 #define SCREEN_LEFT 0.0f
 #define SCREEN_RIGHT SCREEN_WIDTH
+#define BYTES_PER_PIXEL 4
 static constexpr v2 ScreenCenter = {SCREEN_WIDTH/2.0f, SCREEN_HEIGHT/2.0f};
 static constexpr rect ScreenRect = {SCREEN_LEFT, SCREEN_TOP, SCREEN_RIGHT, SCREEN_BOTTOM};
 
@@ -150,11 +157,9 @@ typedef struct {
     i32 Width;
     i32 Height;
     i32 Pitch;
-    i32 BytesPerPixel;
     i32 MemorySize;
     u8 *Memory;
 } platform_framebuffer;
-// TODO: Should be called game_framebuffer for consistency?
 
 typedef struct {
     bool32 IsDown;
@@ -244,10 +249,6 @@ typedef PLATFORM_GET_WAV_LOAD_INFO(platform_get_wav_load_info);
 #define PLATFORM_LOAD_WAV(name) void name(const char *Filename, void* Memory, platform_wav_load_info Info)
 typedef PLATFORM_LOAD_WAV(platform_load_wav);
 
-// TODO: This seems to be unused
-#define PLATFORM_FREE_FILE_MEMORY(name) void name(void *Memory)
-typedef PLATFORM_FREE_FILE_MEMORY(platform_free_file_memory);
-
 #define PLATFORM_DEBUG_WRITE_FILE(name) void name(const char *Filename, void* Memory, u32 WriteSize)
 typedef PLATFORM_DEBUG_WRITE_FILE(platform_debug_write_file);
 
@@ -272,7 +273,6 @@ typedef struct _game_memory {
     // TODO: Move these into their own struct for cleanliness?
     platform_get_wav_load_info* PlatformGetWavLoadInfo;
     platform_load_wav* PlatformLoadWav;
-    platform_free_file_memory* PlatformFreeFileMemory;
     platform_debug_write_file* PlatformDebugWriteFile;
     platform_debug_read_file* PlatformDebugReadFile;
     platform_debug_save_framebuffer_as_bmp * PlatformDebugSaveFramebufferAsBMP;
@@ -389,6 +389,7 @@ inline void ZeroSize_(void* StartAddress, size_t Size)
     memset(StartAddress, 0, Size);
 }
 
+
 // Services the game provides to the platform layer
 #define GAME_INITIALIZE(name) void name(platform_framebuffer *Backbuffer, game_memory *GameMemory)
 typedef GAME_INITIALIZE(game_initialize);
@@ -447,8 +448,10 @@ typedef struct {
     float SaucerHCharged;
     float SaucerHChangeThreshold;
 } light_params;
+
+
+#define MAX_VERTICES 8
 typedef struct {
-    bool32 Exists;
     v2 Position;
     v2 Velocity;
     float Heading;
@@ -535,7 +538,9 @@ typedef struct {
     light_source ScoreLight;
     float GameOverTimer;
     object Ship;
+    bool32 ShipExists;
     object Saucer;
+    bool32 SaucerExists;
     float SaucerSpawnTimer;
     float SaucerCourseChangeTimer;
     float SaucerShootTimer;
@@ -545,7 +550,7 @@ typedef struct {
     // TODO: Keep these arrays compact. It's better to check against a count than to be loading in extra 
     // memory, I think.
     asteroid Asteroids[MAX_ASTEROIDS];
-    i32 AsteroidCount;
+    u32 AsteroidCount;
     particle Shots[MAX_SHOTS];
     particle Particles[MAX_PARTICLES];
     particle_block *FirstFreeParticleBlock;

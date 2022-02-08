@@ -85,13 +85,6 @@ PLATFORM_TOGGLE_FULLSCREEN(Win32ToggleFullScreen)
     }
 }
 
-PLATFORM_FREE_FILE_MEMORY(Win32FreeFileMemory) 
-{
-    if (Memory) {
-        VirtualFree(Memory, 0, MEM_RELEASE);
-    }
-}
-
 PLATFORM_DEBUG_READ_FILE(Win32DebugReadFile)
 {
     DWORD BytesRead;
@@ -271,7 +264,6 @@ internal FILETIME Win32GetLastWriteTime(char *Filename)
 {
     FILETIME Result = {};
     WIN32_FIND_DATAA FileData;
-    //TODO: GetFileAttributeEx instead? We don't need a handle that way.
     HANDLE FindHandle = FindFirstFileA(Filename, &FileData);
     if (FindHandle != INVALID_HANDLE_VALUE) {
         Result = FileData.ftLastWriteTime;
@@ -462,7 +454,7 @@ void Win32ResizeBackbuffer(i32 Width, i32 Height)
 {
     GlobalBackbuffer.Width = RoundDownToMultipleOf(4,Width);
     GlobalBackbuffer.Height = RoundDownToMultipleOf(4,Height);
-    i32 UnadjustedPitch = GlobalBackbuffer.Width * GlobalBackbuffer.BytesPerPixel;
+    i32 UnadjustedPitch = GlobalBackbuffer.Width * BYTES_PER_PIXEL;
     i32 SSEAlignedPitch = RoundUpToMultipleOf(16, UnadjustedPitch);
     GlobalBackbuffer.Pitch = SSEAlignedPitch;
     Assert(GlobalBackbuffer.Pitch % 16 == 0);
@@ -473,7 +465,7 @@ void Win32ResizeBackbuffer(i32 Width, i32 Height)
         VirtualFree(GlobalBackbuffer.Memory, 0, MEM_RELEASE);
     }
     GlobalBackbuffer.Memory = (u8*)VirtualAlloc(0, GlobalBackbuffer.MemorySize, MEM_COMMIT, PAGE_READWRITE);
-    GlobalBackbufferBitmapInfo.bmiHeader.biWidth = GlobalBackbuffer.Pitch/GlobalBackbuffer.BytesPerPixel;
+    GlobalBackbufferBitmapInfo.bmiHeader.biWidth = GlobalBackbuffer.Pitch/BYTES_PER_PIXEL;
     GlobalBackbufferBitmapInfo.bmiHeader.biHeight = -GlobalBackbuffer.Height;
 }
 
@@ -706,7 +698,6 @@ WindowCallback(
     return Result;
 }
 
-// TODO: Is it more precise to do this in u64?
 internal float 
 GetSecondsElapsed(LARGE_INTEGER PreCounter, LARGE_INTEGER PostCounter)
 {
@@ -741,9 +732,7 @@ WinMain(HINSTANCE Instance,
         // Get Window rect according to Backbuffer size
         GlobalBackbufferBitmapInfo = {};
         GlobalBackbuffer = {};
-        // TODO: BytesPerPixel doesn't need to be a variable.
-        GlobalBackbuffer.BytesPerPixel = 4;
-        // TODO: Detect size of the monitor we're on and try to center the window and make it a reasonable size.
+        // TODO: Detect size of the monitor we're on and try to center the window and make it a reasonable size?
         Win32ResizeBackbuffer(DEFAULT_BACKBUFFERW, DEFAULT_BACKBUFFERH);
         GlobalBackbufferBitmapInfo.bmiHeader.biSize = sizeof(GlobalBackbufferBitmapInfo.bmiHeader);
         GlobalBackbufferBitmapInfo.bmiHeader.biWidth = GlobalBackbuffer.Width;
@@ -826,7 +815,6 @@ WinMain(HINSTANCE Instance,
             // Create pointers to platform services
             WinState.GameMemory.PlatformLoadWav = &Win32LoadWav;
             WinState.GameMemory.PlatformGetWavLoadInfo = &Win32GetWavLoadInfo;
-            WinState.GameMemory.PlatformFreeFileMemory = &Win32FreeFileMemory;
             WinState.GameMemory.PlatformDebugReadFile = &Win32DebugReadFile;
             WinState.GameMemory.PlatformDebugWriteFile = &Win32DebugWriteFile;
             WinState.GameMemory.PlatformDebugSaveFramebufferAsBMP = &Win32DebugSaveFramebufferAsBMP;
@@ -915,9 +903,7 @@ WinMain(HINSTANCE Instance,
                                     } else
 #if DEBUG_BUILD
                                     if (c == VK_F1) {
-                                        // TODO: Clean this up, MEANING think for a bit about whether this zeroing
-                                        // is necessary, is there a divide that would make sense to create between
-                                        // starting the memory from zero and just resetting the game.
+                                        // Reset
                                         memset(WinState.GameMemory.PermanentStorage, 
                                                 0, WinState.GameMemory.PermanentStorageSize);
                                         WinState.GameMemory.IsSetToZero = true;
@@ -925,8 +911,10 @@ WinMain(HINSTANCE Instance,
                                             Game.Initialize(&GlobalBackbuffer, &WinState.GameMemory);
                                         }
                                     } else if (c == VK_F2) {
+                                        // Hard pause
                                         GlobalDebugPause = !GlobalDebugPause;
                                     } else if (c == VK_F3) {
+                                        // Game state Recording and playback
                                         // NOTE: For now, let's start recording, start playback, end playback
                                         // all on F3. We can make it more flexible later with same functions.
                                         // NOTE: Multiple recorded loops can be easily added here if we need them
@@ -965,6 +953,7 @@ WinMain(HINSTANCE Instance,
                                                     SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
                                         }
                                     } else if (c == VK_F5) {
+                                        // Screenshot
                                         SYSTEMTIME Time;
                                         GetSystemTime(&Time);
                                         char Filename[64];
@@ -1093,8 +1082,6 @@ WinMain(HINSTANCE Instance,
                             OutputDebugStringA("Couldn't get Window DC\n");
                         }
 
-                        // TODO: Prefill the buffer or something? I want to make this more robust to a little bit 
-                        // of stuttering in the game.
                         // NOTE: SoundPaddingSize gets returned in audio frames
                         u32 SoundPaddingSize;
                         u32 DesiredPaddingSize = 2 * (u32)((float)GlobalSamplesPerSecond * TargetSecondsPerFrame);
@@ -1134,8 +1121,6 @@ WinMain(HINSTANCE Instance,
                             OutputDebugStringA("WASAPI couldn't get padding\n");
                             //ERROR checking?
                         }
-                        // TODO: Debug audio markers. In mmoizeko's code on Handmade Network he uses 
-                        // IAudioClock, GetFrequency, GetPosition, Release. Can still look it up
 
                         if(!SoundClientStarted) {
                             GlobalSoundClient->Start();

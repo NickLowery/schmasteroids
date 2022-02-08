@@ -1,11 +1,9 @@
 internal void
 PushAsteroids(render_buffer *Renderer, game_state *GameState, float Alpha = 1.0f)
 {
-    for (u32 AIndex = 0; AIndex < (u32)ArrayCount(GameState->Asteroids); AIndex++) {
+    for (u32 AIndex = 0; AIndex < GameState->AsteroidCount; AIndex++) {
         asteroid *A = GameState->Asteroids + AIndex;
-        if (A->O.Exists) {
-            PushObject(Renderer, &A->O, Alpha);
-        }
+        PushObject(Renderer, &A->O, Alpha);
     }
 }
 
@@ -53,7 +51,7 @@ SpawnShip(game_state *GameState)
     GameState->Ship.Velocity = {0.0f, 0.0f};
     GameState->Ship.Heading = 1.5f * PI;
     GameState->Ship.Spin = 0.0f;
-    GameState->Ship.Exists = true;
+    GameState->ShipExists = true;
 }
 inline void
 InitGameState(game_state *GameState, i32 LevelNumber, metagame_state *MetagameState)
@@ -111,7 +109,7 @@ InitGameState(game_state *GameState, i32 LevelNumber, metagame_state *MetagameSt
         }
     }
 
-    GameState->Saucer.Exists = false;
+    GameState->SaucerExists = false;
     GameState->SaucerSpawnTimer = Level->SaucerSpawnTime;
 
     GameState->FirstFreeParticleBlock = 0;
@@ -126,15 +124,15 @@ UpdateAndDrawGameplay(game_state *GameState, render_buffer *Renderer, game_input
     float dTime = Input->SecondsElapsed;
     static float ShootCoolDown = 0.0f;
 
-    if (!GameState->LevelComplete && GameState->AsteroidCount == 0 && !GameState->Saucer.Exists &&
-            GameState->Ship.Exists)
+    if (!GameState->LevelComplete && GameState->AsteroidCount == 0 && !GameState->SaucerExists &&
+            GameState->ShipExists)
     {
         GameState->Level.Number++;
         GameState->LevelComplete = true;
         StartMusicCrossfade(Metagame, &Metagame->Sounds.OneBarKick, 2.0f);
     }
 
-    if (GameState->Ship.Exists) {
+    if (GameState->ShipExists) {
         GameState->Ship.Spin = 0;
         if (Input->Keyboard.MoveRight.IsDown) {
             GameState->Ship.Spin = SHIP_TURN_SPEED;
@@ -197,13 +195,13 @@ UpdateAndDrawGameplay(game_state *GameState, render_buffer *Renderer, game_input
         // Look for opportunity to respawn ship
         bool32 CenterIsClear = true;
         float MinimumDistanceSq = Square(AsteroidProps[2].Radius * 2.0f);
-        for (u32 AIndex = 0; AIndex < (u32)ArrayCount(GameState->Asteroids); AIndex++) {
+        for (u32 AIndex = 0; AIndex < GameState->AsteroidCount; AIndex++) {
             asteroid *A = GameState->Asteroids + AIndex;
-            if (A->O.Exists && LengthSq(ScreenCenter - A->O.Position) < MinimumDistanceSq) {
+            if (LengthSq(ScreenCenter - A->O.Position) < MinimumDistanceSq) {
                 CenterIsClear = false;
             }
         }
-        if (GameState->Saucer.Exists && LengthSq(ScreenCenter - GameState->Saucer.Position) < MinimumDistanceSq) {
+        if (GameState->SaucerExists && LengthSq(ScreenCenter - GameState->Saucer.Position) < MinimumDistanceSq) {
             CenterIsClear = false;
         }
         if (CenterIsClear) {
@@ -212,13 +210,13 @@ UpdateAndDrawGameplay(game_state *GameState, render_buffer *Renderer, game_input
         }
     }
 
-    if(GameState->Saucer.Exists) {
+    if(GameState->SaucerExists) {
         if (UpdateAndCheckTimer(&GameState->SaucerCourseChangeTimer, dTime)) {
             SetSaucerCourse(GameState);
             GameState->SaucerCourseChangeTimer = GameState->Level.SaucerCourseChangeTime;
         }
         MoveObject(&GameState->Saucer, dTime, GameState);
-        if (GameState->Ship.Exists && UpdateAndCheckTimer(&GameState->SaucerShootTimer, dTime)) {
+        if (GameState->ShipExists && UpdateAndCheckTimer(&GameState->SaucerShootTimer, dTime)) {
             SaucerShootLeading(GameState, Metagame);
         }
     } else if (!GameState->LevelComplete) {
@@ -235,12 +233,12 @@ UpdateAndDrawGameplay(game_state *GameState, render_buffer *Renderer, game_input
     for (int SIndex = 0; SIndex < MAX_SHOTS; ++SIndex) {
         particle* ThisShot = &GameState->Shots[SIndex];
         if (ThisShot->Exists) {
-            if (GameState->Saucer.Exists && Collide(ThisShot, &GameState->Saucer, GameState)) {
+            if (GameState->SaucerExists && Collide(ThisShot, &GameState->Saucer, GameState)) {
                 ExplodeSaucer(GameState, Metagame);
                 ThisShot->Exists = false;
                 break;
             }
-            if (GameState->Ship.Exists && Collide(ThisShot, &GameState->Ship, GameState)) {
+            if (GameState->ShipExists && Collide(ThisShot, &GameState->Ship, GameState)) {
                 ExplodeShip(GameState, Metagame);
                 ThisShot->Exists = false;
                 break;
@@ -248,28 +246,26 @@ UpdateAndDrawGameplay(game_state *GameState, render_buffer *Renderer, game_input
         }
     }
     // Collide asteroids
-    for (int AIndex = 0; AIndex < MAX_ASTEROIDS; ++AIndex) {
-        if (GameState->Asteroids[AIndex].O.Exists) {
-            if (GameState->Ship.Exists && Collide(&GameState->Asteroids[AIndex].O, &GameState->Ship, GameState)) {
-                ExplodeShip(GameState, Metagame);
-            }
-            if (GameState->Saucer.Exists && Collide(&GameState->Asteroids[AIndex].O, &GameState->Saucer, GameState)) {
-                ExplodeSaucer(GameState, Metagame);
-            }
-            for (int SIndex = 0; SIndex < MAX_SHOTS; ++SIndex) {
-                particle* ThisShot = &GameState->Shots[SIndex];
-                if (ThisShot->Exists) {
-                    if (Collide(ThisShot, &GameState->Asteroids[AIndex].O, GameState)) {
-                        ExplodeAsteroid(&GameState->Asteroids[AIndex], GameState, Metagame);
-                        ThisShot->Exists = false;
-                        break;
-                    }
+    for (u32 AIndex = 0; AIndex < GameState->AsteroidCount; ++AIndex) {
+        if (GameState->ShipExists && Collide(&GameState->Asteroids[AIndex].O, &GameState->Ship, GameState)) {
+            ExplodeShip(GameState, Metagame);
+        }
+        if (GameState->SaucerExists && Collide(&GameState->Asteroids[AIndex].O, &GameState->Saucer, GameState)) {
+            ExplodeSaucer(GameState, Metagame);
+        }
+        for (int SIndex = 0; SIndex < MAX_SHOTS; ++SIndex) {
+            particle* ThisShot = &GameState->Shots[SIndex];
+            if (ThisShot->Exists) {
+                if (Collide(ThisShot, &GameState->Asteroids[AIndex].O, GameState)) {
+                    ExplodeAsteroid(&GameState->Asteroids[AIndex], GameState, Metagame);
+                    ThisShot->Exists = false;
+                    break;
                 }
             }
         }
     }
     // Collide ship with saucer
-    if (GameState->Saucer.Exists && GameState->Ship.Exists && Collide(&GameState->Ship, &GameState->Saucer, GameState)) {
+    if (GameState->SaucerExists && GameState->ShipExists && Collide(&GameState->Ship, &GameState->Saucer, GameState)) {
         ExplodeShip(GameState, Metagame);
         ExplodeSaucer(GameState, Metagame);
     }
@@ -301,7 +297,7 @@ UpdateAndDrawGameplay(game_state *GameState, render_buffer *Renderer, game_input
     }
          
 
-    if (GameState->Saucer.Exists) {
+    if (GameState->SaucerExists) {
         float SaucerCharge = 1.0f - (GameState->SaucerShootTimer / GameState->Level.SaucerShootTime);
         float Threshold = Metagame->LightParams.SaucerHChangeThreshold;
         float HCharged = Metagame->LightParams.SaucerHCharged;
@@ -316,7 +312,7 @@ UpdateAndDrawGameplay(game_state *GameState, render_buffer *Renderer, game_input
 
         PushObject(Renderer, &GameState->Saucer, SceneAlpha);
     }
-    if (GameState->Ship.Exists) {
+    if (GameState->ShipExists) {
         Metagame->LightParams.ShipLightMin.C_L = 2.0f;
         Metagame->LightParams.ShipC_LRange = 6.0f;
         music_position_data Playhead = GetMusicPositionData(&Metagame->SoundState);

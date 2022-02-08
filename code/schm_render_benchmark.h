@@ -85,7 +85,7 @@ internal void
 UpdateAndDrawRenderBenchmark(metagame_state *Metagame, game_memory *GameMemory, render_buffer *Renderer, game_input *Input)
 {
     game_state *GameState = GetGameState(Metagame);
-    GlobalFramesToRender = 200;
+    GlobalFramesToRender = 150;
 
     float dTime = Input->SecondsElapsed;
 

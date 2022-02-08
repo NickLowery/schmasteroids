@@ -193,8 +193,9 @@ GAME_INITIALIZE(GameInitialize)
     GlobalFrameCount = 0;
     GlobalFramesToRender = 120;
 #else
-    SetUpLevel(Metagame, 1);
-    SetUpLevelStartScreen(Metagame, 1);
+    i32 StartingLevel = 1;
+    SetUpLevel(Metagame, StartingLevel);
+    SetUpLevelStartScreen(Metagame, StartingLevel);
     SetUpStartScreen(Metagame);
     Metagame->CurrentGameMode = GameMode_StartScreen;
 #endif
@@ -613,12 +614,9 @@ internal asteroid*
 CreateAsteroid(int Size, game_state *GameState, light_params *LightParams)
 {
     Assert(Size <= MAX_ASTEROID_SIZE);
-    asteroid *Result = GameState->Asteroids;
-    while(Result->O.Exists) {Result++;}
-    Assert(Result - GameState->Asteroids < MAX_ASTEROIDS);
+    asteroid *Result = GameState->Asteroids + GameState->AsteroidCount++;
 
     Result->Size = (u8)Size;
-    Result->O.Exists = true;
     Result->O.CollisionRadius = AsteroidProps[Size].Radius;
 
     Result->O.Light = LightParams->AsteroidLightMin;
@@ -636,16 +634,14 @@ CreateAsteroid(int Size, game_state *GameState, light_params *LightParams)
         Result->O.Vertices[VIndex] = Vertex;
     }
 
-    ++GameState->AsteroidCount;
-
     return Result;
 }
 
 internal void
 SpawnSaucer(game_state *GameState, metagame_state *Metagame)
 {
-    Assert(GameState->Saucer.Exists == false);
-    GameState->Saucer.Exists = true;
+    Assert(GameState->SaucerExists == false);
+    GameState->SaucerExists = true;
     i32 Edge = RandI32() % 4;
     switch (Edge) {
         // TOP
@@ -682,7 +678,7 @@ SpawnSaucer(game_state *GameState, metagame_state *Metagame)
 internal void
 SetSaucerCourse(game_state *GameState) 
 {
-    if (GameState->Ship.Exists) {
+    if (GameState->ShipExists) {
         v2 SaucerToShip = ShortestPath(GameState->Saucer.Position, GameState->Ship.Position);
         GameState->Saucer.Velocity = ScaleV2ToMagnitude(SaucerToShip, GameState->Level.SaucerSpeed);
     }
@@ -692,7 +688,6 @@ SetSaucerCourse(game_state *GameState)
 inline void
 ExplodeObject(game_state *GameState, object *O, i32 ParticleCount, color Color)
 {
-    O->Exists = false;
     particle_group *NewGroup;
     if (GameState->FirstFreeParticleGroup) {
         NewGroup = GameState->FirstFreeParticleGroup;
@@ -739,6 +734,7 @@ ExplodeObject(game_state *GameState, object *O, i32 ParticleCount, color Color)
 internal void
 ExplodeShip(game_state *GameState, metagame_state *Metagame)
 {
+    GameState->ShipExists = false;
     PlaySound(Metagame, &Metagame->Sounds.ShipExplosion, 0.6f);
     ExplodeObject(GameState, &GameState->Ship, SHIP_PARTICLES, Color(SHIP_COLOR));
     if (GameState == &Metagame->GameState) {
@@ -755,6 +751,7 @@ ExplodeShip(game_state *GameState, metagame_state *Metagame)
 internal void
 ExplodeSaucer(game_state *GameState, metagame_state *Metagame)
 {
+    GameState->SaucerExists = false;
     ExplodeObject(GameState, &GameState->Saucer, SHIP_PARTICLES, Color(SAUCER_COLOR));
     GameState->SaucerSpawnTimer = GameState->Level.SaucerSpawnTime;
     PlaySound(Metagame, &Metagame->Sounds.SaucerExplosion, 0.6f);
@@ -764,7 +761,6 @@ ExplodeSaucer(game_state *GameState, metagame_state *Metagame)
 internal void
 ExplodeAsteroid(asteroid* Exploding, game_state *GameState, metagame_state *Metagame)
 {
-    --GameState->AsteroidCount;
     if(Exploding->Size > 0) {
         u8 ChildSize = Exploding->Size - 1;
         for (int i = 0; i < AsteroidProps[Exploding->Size].Children; i++) {
@@ -783,15 +779,19 @@ ExplodeAsteroid(asteroid* Exploding, game_state *GameState, metagame_state *Meta
     ExplodeObject(GameState, &Exploding->O, AsteroidProps[Exploding->Size].Particles, Color(ASTEROID_COLOR));
     PlaySound(Metagame, &Metagame->Sounds.AsteroidExplosion, 0.25f);
     GameState->Score += AsteroidProps[Exploding->Size].DestroyPoints;
+
+    if (Exploding - GameState->Asteroids != GameState->AsteroidCount - 1) {
+        memcpy(Exploding, &GameState->Asteroids[--GameState->AsteroidCount], sizeof(asteroid));
+    } else {
+        --GameState->AsteroidCount;
+    }
 }
 
 internal void
 MoveAsteroids(float SecondsElapsed, game_state *GameState) 
 {
-    for (u32 AIndex = 0; AIndex < (u32)ArrayCount(GameState->Asteroids); AIndex++) {
-        if (GameState->Asteroids[AIndex].O.Exists) {
-            MoveObject(&(GameState->Asteroids[AIndex].O), SecondsElapsed, GameState);
-        }
+    for (u32 AIndex = 0; AIndex < GameState->AsteroidCount; AIndex++) {
+        MoveObject(&(GameState->Asteroids[AIndex].O), SecondsElapsed, GameState);
     }
 }
 

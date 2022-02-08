@@ -63,7 +63,6 @@ internal void ResizeBackbuffer(SDL_Renderer *Renderer, output_data *OutputData, 
         printf("Malloc failed in ResizeBackbuffer");
         ErrorOut(-1);
     }
-    OutputData->FrameBuffer.BytesPerPixel = 4;
     OutputData->WindowUpdateArea.x = 0;
     OutputData->WindowUpdateArea.y = 0;
     OutputData->WindowUpdateArea.w = DEFAULT_BACKBUFFERW;
