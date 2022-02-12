@@ -281,15 +281,22 @@ PrintScore(render_buffer *Renderer, game_state *GameState, metagame_state *Metag
     char String[MAX_SCORE_DIGITS + 1];
     // UINT64_MAX is a 20 digit decimal number, plus one for null byte
     u32 DigitsInScore = SetStringFromNumber(String, GameState->Score, MAX_SCORE_DIGITS + 1);
-    float Margin = CalculateLightMargin(&GameState->ScoreLight);
+
+    light_source ScoreLight;
+    ScoreLight.H = 0.0f;
+    ScoreLight.S = 0.0f;
+    ScoreLight.C_L = 2.0f;
+    ScoreLight.ZDistSq = 2.0f;
+    float Margin = CalculateLightMargin(&ScoreLight, 1.0f/128.0f);
+
     float GlyphWidth = 30.0f;
     // NOTE: This is small enough that we will not run out of screen 
     // space, if changing for some reason keep this in mind
     v2 GlyphDim = V2(GlyphWidth, Metagame->GlyphYOverX*GlyphWidth);
     float ActualWidth = (DigitsInScore + ((DigitsInScore - 1) * GlyphSpacingOverWidth)) * GlyphWidth;
     v2 MinPoint = V2(SCREEN_RIGHT - Margin - ActualWidth, Margin);
-    GameState->ScoreLight.C_L = Alpha;
-    PrintFromMinCornerAndGlyphDim(Renderer, Metagame, &GameState->ScoreLight, String, MinPoint, GlyphDim);
+    ScoreLight.C_L *= Alpha;
+    PrintFromMinCornerAndGlyphDim(Renderer, Metagame, &ScoreLight, String, MinPoint, GlyphDim);
 }
 
 inline void 

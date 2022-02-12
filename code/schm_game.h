@@ -205,7 +205,6 @@ typedef struct {
     level Level;
     u64 Score;
     u32 ExtraLives;
-    light_source ScoreLight;
     float GameOverTimer;
     object Ship;
     bool32 ShipExists;

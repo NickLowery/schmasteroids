@@ -150,10 +150,6 @@ GAME_INITIALIZE(GameInitialize)
 
     GameState->Saucer.Light = Metagame->LightParams.SaucerLightBase;
     GameState->Ship.Light = Metagame->LightParams.ShipLightMin;
-    GameState->ScoreLight.H = 0.0f;
-    GameState->ScoreLight.S = 0.0f;
-    GameState->ScoreLight.C_L = 2.0f;
-    GameState->ScoreLight.ZDistSq = 2.0f;
 
     Metagame->GlyphYOverX = 1.7f;
     u32 GlyphSize = sizeof(glyph);
