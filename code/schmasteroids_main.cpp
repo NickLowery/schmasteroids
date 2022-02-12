@@ -596,14 +596,16 @@ MoveShots(float SecondsElapsed, game_state *GameState)
         particle *ThisShot = &GameState->Shots[SIndex];
         if (UpdateAndCheckTimer(&ThisShot->SecondsToLive, SecondsElapsed)) {
             RemoveShot(GameState, SIndex);
-        } else {
-            ThisShot->tLMod += 16.0f * SecondsElapsed;
-            if (ThisShot->tLMod > 2.0f*PI) {
-                ThisShot->tLMod -= 2.0f*PI;
-            }
-            ThisShot->Light.C_L = ThisShot->C_LOriginal + (0.5f*Sin(ThisShot->tLMod));
-            MoveParticle(ThisShot, SecondsElapsed, GameState);
+        } 
+
+        // We could be moving a shot we just invalidated if it's the last one in the array
+        // but it won't hurt anything
+        ThisShot->tLMod += 16.0f * SecondsElapsed;
+        if (ThisShot->tLMod > 2.0f*PI) {
+            ThisShot->tLMod -= 2.0f*PI;
         }
+        ThisShot->Light.C_L = ThisShot->C_LOriginal + (0.5f*Sin(ThisShot->tLMod));
+        MoveParticle(ThisShot, SecondsElapsed, GameState);
     }
 }
 
@@ -615,10 +617,10 @@ MoveParticles(float SecondsElapsed, game_state *GameState)
         particle *ThisParticle = &GameState->Particles[PIndex];
         if (UpdateAndCheckTimer(&ThisParticle->SecondsToLive, SecondsElapsed)) {
             RemoveParticle(GameState, PIndex);
-        } else {
-            ThisParticle->Light.C_L = ThisParticle->C_LOriginal * (ThisParticle->SecondsToLive / PARTICLE_LIFETIME);
-            MoveParticle(ThisParticle, SecondsElapsed, GameState);
         }
+        // We could be moving a particle we just invalidated but it won't hurt anything
+        ThisParticle->Light.C_L = ThisParticle->C_LOriginal * (ThisParticle->SecondsToLive / PARTICLE_LIFETIME);
+        MoveParticle(ThisParticle, SecondsElapsed, GameState);
     }
     // Move particles in groups
     for (particle_group **GroupPointer = &GameState->FirstParticleGroup;

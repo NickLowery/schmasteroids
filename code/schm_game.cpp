@@ -405,7 +405,7 @@ UpdateAndDrawGameplay(game_state *GameState, render_buffer *Renderer, game_input
             }
             v2 dVelocity = GameState->Ship.Velocity - PrevVelocity;
             v2 dPos = ((0.5f*dVelocity) + PrevVelocity) * dTime;
-            v2 OldTailPos = MapFromObjectPosition(GameState->Ship.Vertices[2], GameState->Ship);
+            v2 OldTailPos = MapFromObjectPosition(GameState->Ship.Vertices[2],  GameState->Ship);
             MovePosition(&GameState->Ship.Position, dPos, GameState);
             GameState->Ship.Heading += GameState->Ship.Spin * dTime;
             // TODO: Use this to have an arc of particles?
@@ -442,7 +442,7 @@ UpdateAndDrawGameplay(game_state *GameState, render_buffer *Renderer, game_input
         if (UpdateAndCheckTimer(&ShootCoolDown, dTime) && 
                 Input->Keyboard.Fire.IsDown && !Input->Keyboard.Fire.WasDown) {
             ShipShoot(GameState, Metagame);
-            ShootCoolDown = SHOT_COOLDOWN_TIME;
+             ShootCoolDown = SHOT_COOLDOWN_TIME;
         }
     } else if (GameState->ExtraLives > 0 && UpdateAndCheckTimer(&GameState->ShipRespawnTimer, dTime)) {
         // Look for opportunity to respawn ship
