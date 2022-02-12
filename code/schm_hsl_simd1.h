@@ -1,5 +1,18 @@
 #ifndef SCHMASTEROIDS_HSLDRAW_H
 #define SCHMASTEROIDS_HSLDRAW_H
+
+//TODO: Cleanup: Are these getting called somewhere? Editor?
+internal void
+DrawLineWarpedWindowSpaceHSL(platform_framebuffer*Backbuffer, metagame_state *MetagameState, hsl_color HSLColor,
+                             v2 First, v2 Second);
+
+internal void
+DrawLine(platform_framebuffer*Backbuffer, color Color,
+        v2 V1, v2 V2);
+
+inline void DrawPixelHSL(platform_framebuffer *Backbuffer, i32 PixelX, i32 PixelY, hsl_color HSLColor);
+
+inline void SetPixelWithAlpha(color *Dest, color Source);
 // TODO: Take another pass at this when possible... make sure that the swizzling actually makes sense to do?
 // I suspect that my test in October 2021 was not fair to the unswizzled version. Based on watching Casey's simd
 // optimization, it seems quite possible that getting __m128 values out of structs could have

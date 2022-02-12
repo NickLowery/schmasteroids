@@ -338,6 +338,14 @@ Rotate(v2 V, float Angle);
 internal v2
 ClipEndPointToRect(v2 VIn, v2 VOut, rect Rect);
 
+//Takes warping into account
+internal v2 
+ShortestPath(v2 From, v2 To);
+
+internal float
+GetAbsoluteDistance(v2 FirstV, v2 SecondV);
+
+
 internal void SeedPRNG(u32 Seed)
 {
     srand(Seed);

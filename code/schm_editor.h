@@ -1,14 +1,14 @@
-#ifndef SCHMASTEROIDS_EDITOR_H
+#ifndef SCHM_EDITOR_H
 
 #define SELECT_ERROR_MARGIN_SQ 100.0f
 #define COLOR_ASTEROIDS_COUNT 10
-enum edit_mode: u32 {
+typedef enum _edit_mode: u32 {
     EditMode_Off = 0,
     EditMode_Digits,
     EditMode_Letters,
     EditMode_AsteroidColors,
     EditMode_Terminate,
-};
+} edit_mode;
 
 typedef struct working_point_ {
     v2 Coords;
@@ -52,7 +52,7 @@ typedef struct {
     char Name[SLIDER_NAME_MAX_LENGTH + 1]; 
 } slider;
 
-typedef struct{
+typedef struct {
     memory_arena EditArena;
 
     editor_glyph_slot GlyphRects[26];
@@ -126,5 +126,5 @@ DeletePointIfOrphaned(editor_state *EditorState, working_point *Point, working_g
 internal void
 DeleteActiveSeg(editor_state *EditorState, working_glyph *Glyph); 
 
-#define SCHMASTEROIDS_EDITOR_H 1
+#define SCHM_EDITOR_H 1
 #endif

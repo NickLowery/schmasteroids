@@ -5,40 +5,7 @@
 #define BYTES_PER_SAMPLE 2
 #define BEATS_PER_MINUTE 122
 
-#pragma pack(push,1)
-typedef struct {
-    char ckID[4];
-    u32 ckSize;
-} wav_chunk_header;
 
-typedef struct {
-    wav_chunk_header ChunkHeader;
-    char WAVEID[4];
-} wav_header;
-
-typedef struct {
-    wav_chunk_header ChunkHeader;
-    u16 wFormatTag;
-    u16 nChannels;
-    u32 nSamplesPerSec;
-    u32 nAvgBytesPerSec;
-    u16 BlockAlign;
-    u16 wBitsPerSample;
-    u16 cbSize;
-    u16 wValidBitsPerSample;
-    u32 dwChannelMask;
-    char SubFormat[16];
-} wav_chunk;
-
-#pragma pack(pop)
-
-//NOTE: Currently we assume sound output is always interleaved stereo, 16bit integer PCM,
-// sampling rate 48000Hz
-typedef struct {
-    i32 AFramesPerSecond;
-    i32 AFramesToWrite;
-    i16 *SampleData;
-} platform_sound_output_buffer;
 // Format must be PCM.
 // Channels must be 1 or 2
 // Samples per second must equal GlobalSamplesPerSecond in platform
@@ -64,11 +31,6 @@ typedef struct {
     i16* CurrentSample;
 } game_music_clip;
 
-typedef struct {
-    size_t StartOfSamplesInFile;
-    size_t SampleByteCount;
-    u32 Channels;
-} platform_wav_load_info;
 
 typedef struct {
     union {

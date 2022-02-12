@@ -1,4 +1,237 @@
 internal void
+SetSaucerCourse(game_state *GameState) 
+{
+    if (GameState->ShipExists) {
+        v2 SaucerToShip = ShortestPath(GameState->Saucer.Position, GameState->Ship.Position);
+        GameState->Saucer.Velocity = ScaleV2ToMagnitude(SaucerToShip, GameState->Level.SaucerSpeed);
+    }
+}
+
+internal void
+SpawnSaucer(game_state *GameState, metagame_state *Metagame)
+{
+    Assert(GameState->SaucerExists == false);
+    GameState->SaucerExists = true;
+    i32 Edge = RandI32() % 4;
+    switch (Edge) {
+        // TOP
+        case 0: { 
+            GameState->Saucer.Position.Y = SCREEN_TOP;
+            GameState->Saucer.Position.X = 
+                RandFloatRange(SCREEN_LEFT, SCREEN_RIGHT);
+        } break;
+        // BOTTOM
+        case 1: { 
+            GameState->Saucer.Position.Y = SCREEN_BOTTOM;
+            GameState->Saucer.Position.X = 
+                RandFloatRange(SCREEN_LEFT, SCREEN_RIGHT);
+        } break;
+        case 2: { 
+        //LEFT
+            GameState->Saucer.Position.X = SCREEN_LEFT;
+            GameState->Saucer.Position.Y = RandFloatRange(SCREEN_TOP, SCREEN_BOTTOM);
+        } break;
+        case 3: { 
+        //RIGHT
+            GameState->Saucer.Position.X = SCREEN_RIGHT;
+            GameState->Saucer.Position.Y = RandFloatRange(SCREEN_TOP, SCREEN_BOTTOM);
+        } break;
+    }
+    WarpPositionToScreen(&GameState->Saucer.Position);
+    GameState->Saucer.CollisionRadius = SAUCER_RADIUS;
+    SetSaucerCourse(GameState);
+    GameState->SaucerCourseChangeTimer = GameState->Level.SaucerCourseChangeTime;
+    GameState->SaucerShootTimer = GameState->Level.SaucerShootTime;
+    PlaySound(Metagame, &Metagame->Sounds.SaucerSpawn, 0.6f);
+}
+
+
+
+inline void
+ExplodeObject(game_state *GameState, object *O, i32 ParticleCount, color Color)
+{
+    particle_group *NewGroup;
+    if (GameState->FirstFreeParticleGroup) {
+        NewGroup = GameState->FirstFreeParticleGroup;
+        GameState->FirstFreeParticleGroup = NewGroup->NextGroup;
+    } else {
+        NewGroup = PushStruct(&GameState->GameArena, particle_group);
+    }
+    NewGroup->NextGroup = GameState->FirstParticleGroup;
+    GameState->FirstParticleGroup = NewGroup;
+
+    NewGroup->H = O->Light.H;
+    NewGroup->S = O->Light.S;
+    NewGroup->SecondsToLive = PARTICLE_LIFETIME;
+    NewGroup->C_LOriginal = O->Light.C_L;
+    NewGroup->TotalParticles = ParticleCount;
+
+    particle_block *PreviousBlock = 0;
+    while (ParticleCount > 0) {
+        particle_block *NewBlock;
+        if (GameState->FirstFreeParticleBlock) {
+            NewBlock = GameState->FirstFreeParticleBlock;
+            GameState->FirstFreeParticleBlock = NewBlock->NextBlock;
+        } else {
+            NewBlock = PushStruct(&GameState->GameArena, particle_block);
+        }
+        NewBlock->NextBlock= PreviousBlock;
+        if (ParticleCount > MAX_PARTICLES_IN_BLOCK) {
+            NewBlock->Count = MAX_PARTICLES_IN_BLOCK;
+        } else {
+            NewBlock->Count = ParticleCount;
+        }
+        for (i32 PIndex = 0; PIndex < NewBlock->Count; ++PIndex) {
+            NewBlock->ZDistSq[PIndex] = O->Light.ZDistSq;
+            v2 Scatter = RandV2InRadius(1.0f);
+            NewBlock->Position[PIndex] = O->Position + (Scatter * O->CollisionRadius);
+            NewBlock->Velocity[PIndex] = O->Velocity + (Scatter * PARTICLE_VELOCITY);
+        }
+        ParticleCount -= NewBlock->Count;
+        PreviousBlock = NewBlock;
+    }
+    NewGroup->FirstBlock = PreviousBlock;
+}
+
+internal void
+ExplodeShip(game_state *GameState, metagame_state *Metagame)
+{
+    GameState->ShipExists = false;
+    PlaySound(Metagame, &Metagame->Sounds.ShipExplosion, 0.6f);
+    ExplodeObject(GameState, &GameState->Ship, SHIP_PARTICLES, Color(SHIP_COLOR));
+    if (GameState == &Metagame->GameState) {
+        // NOTE: Only if we're actually in gameplay
+        if (GameState->ExtraLives > 0) {
+            GameState->ShipRespawnTimer = 3.0f;
+        } else {
+            Metagame->SoundState.MusicFadingOut = true;
+            Metagame->SoundState.SecondsLeftInFade = 2.0f;
+        }
+    }
+}
+
+internal void
+ExplodeSaucer(game_state *GameState, metagame_state *Metagame)
+{
+    GameState->SaucerExists = false;
+    ExplodeObject(GameState, &GameState->Saucer, SHIP_PARTICLES, Color(SAUCER_COLOR));
+    GameState->SaucerSpawnTimer = GameState->Level.SaucerSpawnTime;
+    PlaySound(Metagame, &Metagame->Sounds.SaucerExplosion, 0.6f);
+    GameState->Score += 1000;
+}
+
+internal void
+ExplodeAsteroid(asteroid* Exploding, game_state *GameState, metagame_state *Metagame)
+{
+    if(Exploding->Size > 0) {
+        u8 ChildSize = Exploding->Size - 1;
+        for (int i = 0; i < AsteroidProps[Exploding->Size].Children; i++) {
+            asteroid* Child = CreateAsteroid(ChildSize, GameState, &Metagame->LightParams);
+            Child->O.Position = Exploding->O.Position + 
+                    RandV2InRadius(AsteroidProps[Exploding->Size].Radius/2);
+            WarpPositionToScreen(&Child->O.Position);
+            Child->O.Velocity = Exploding->O.Velocity + 
+                    RandV2InRadius(EXPLODE_VELOCITY);
+            Child->O.Heading = RandFloatRange(0.0f, PI);
+            Child->O.Spin = Exploding->O.Spin + 
+                RandFloatRange(-EXPLODE_SPIN, EXPLODE_SPIN);
+            Child->O.Light = Exploding->O.Light;
+        }
+    }
+    ExplodeObject(GameState, &Exploding->O, AsteroidProps[Exploding->Size].Particles, Color(ASTEROID_COLOR));
+    PlaySound(Metagame, &Metagame->Sounds.AsteroidExplosion, 0.25f);
+    GameState->Score += AsteroidProps[Exploding->Size].DestroyPoints;
+
+    if (Exploding - GameState->Asteroids != GameState->AsteroidCount - 1) {
+        memcpy(Exploding, &GameState->Asteroids[--GameState->AsteroidCount], sizeof(asteroid));
+    } else {
+        --GameState->AsteroidCount;
+    }
+}
+internal void
+ShipShoot(game_state *GameState, metagame_state *Metagame) 
+{
+    particle* S = CreateShot(GameState);
+    S->Position = MapFromObjectPosition(GameState->Ship.Vertices[0], GameState->Ship);
+    S->Velocity = V2FromAngleAndMagnitude(GameState->Ship.Heading, SHOT_ABS_VEL) +
+        GameState->Ship.Velocity;
+    S->Light = Metagame->LightParams.ShipShotLightBase;
+    S->C_LOriginal = S->Light.C_L;
+    PlaySound(Metagame, &Metagame->Sounds.ShipLaser);
+}
+
+
+inline void SaucerShoot(metagame_state *Metagame, v2 ShotVector)
+{
+    game_state *GameState = GetGameState(Metagame);
+    particle* S = CreateShot(GameState);
+    S->Velocity = ScaleV2ToMagnitude(ShotVector, SHOT_ABS_VEL) +
+        GameState->Saucer.Velocity;
+    v2 ShotOffset = ScaleV2ToMagnitude(ShotVector, SAUCER_RADIUS);
+    S->Position = ShotOffset + GameState->Saucer.Position;
+    S->Light = Metagame->LightParams.SaucerShotLightBase;
+    S->C_LOriginal = S->Light.ZDistSq;
+
+    PlaySound(Metagame, &Metagame->Sounds.SaucerLaser);
+    GameState->SaucerShootTimer = GameState->Level.SaucerShootTime;
+}
+internal void
+SaucerShootDumb(game_state *GameState, metagame_state *Metagame) 
+{
+    v2 VectorToShip = ShortestPath(GameState->Saucer.Position, GameState->Ship.Position);
+    SaucerShoot(Metagame, VectorToShip);
+}
+
+internal void
+SaucerShootLeading(game_state *GameState, metagame_state *Metagame)
+{
+    // NOTE: For now this ignores warping!!! Bug or feature?
+    // Quadratic equation to find time when shot can hit ship
+    v2 RelativeShipPosition = GameState->Ship.Position - GameState->Saucer.Position;
+    v2 ShotOffset = ScaleV2ToMagnitude(RelativeShipPosition, SAUCER_RADIUS);
+    RelativeShipPosition -= ShotOffset;
+    v2 RelativeShipVelocity = GameState->Ship.Velocity - GameState->Saucer.Velocity;
+    float A = Square(RelativeShipVelocity.X) + Square(RelativeShipVelocity.Y) - Square(SHOT_ABS_VEL);
+    float B = 2.0f * 
+        ((RelativeShipVelocity.X * RelativeShipPosition.X) + (RelativeShipVelocity.Y * RelativeShipPosition.Y));
+    float C = Square(RelativeShipPosition.X) + Square(RelativeShipPosition.Y);
+    float Desc = Square(B) - (4.0f*A*C);
+    if(Desc < 0) { // No solution
+        SaucerShootDumb(GameState, Metagame);
+    } else {
+        float HitTime = -1.0f;
+        if (Desc == 0) {
+            HitTime = -B / (2 * A);
+        } else {
+            float TwoA = 2 * A;
+            float SolutionOne = (-B - Sqrt(Desc)) / TwoA;
+            float SolutionTwo = (-B + Sqrt(Desc)) / TwoA;
+            float Lower, Higher;
+            if(SolutionOne < SolutionTwo) {
+                Lower = SolutionOne;
+                Higher = SolutionTwo;
+            } else {
+                Higher = SolutionOne;
+                Lower = SolutionTwo;
+            }
+            if(Lower < 0) {
+                HitTime = Higher;
+            } else {
+                HitTime = Lower;
+            }
+
+            if (HitTime < 0) {
+                SaucerShootDumb(GameState, Metagame);
+            } else {
+                v2 RelShipPositionAtHitTime = RelativeShipPosition + (HitTime * RelativeShipVelocity);
+                SaucerShoot(Metagame, RelShipPositionAtHitTime);
+            }
+
+
+        }
+    }
+}
+internal void
 PushAsteroids(render_buffer *Renderer, game_state *GameState, float Alpha = 1.0f)
 {
     for (u32 AIndex = 0; AIndex < GameState->AsteroidCount; AIndex++) {

@@ -7,7 +7,10 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "schm_platform_includes.h"
 #include "schm_main.h"
+#include "schm_platform.h"
+#include "schm_math.h"
 #include "win32_schmasteroids.h"
 
 static bool GlobalRunning;
