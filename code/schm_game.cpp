@@ -42,7 +42,7 @@ SpawnSaucer(game_state *GameState, metagame_state *Metagame)
     SetSaucerCourse(GameState);
     GameState->SaucerCourseChangeTimer = GameState->Level.SaucerCourseChangeTime;
     GameState->SaucerShootTimer = GameState->Level.SaucerShootTime;
-    PlaySound(Metagame, &Metagame->Sounds.SaucerSpawn, 0.6f);
+    PlaySound(Metagame, &Metagame->Sounds.SaucerSpawn, 0.45f);
 }
 
 
