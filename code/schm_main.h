@@ -1,9 +1,12 @@
-#ifndef NICKS_GAME_H
+#ifndef SCHM_MAIN_H
 
 #define internal static
 
+#include <math.h>
+#include <stdio.h>
+#include <float.h>
+#include <stdlib.h>
 #include <stdint.h>
-
 typedef int8_t i8;
 typedef int16_t i16;
 typedef int32_t i32;
@@ -15,11 +18,11 @@ typedef uint64_t u64;
 typedef i32 bool32;
 
 
-#include <math.h>
-#include <stdio.h>
-#include <float.h>
-#include <stdlib.h>
 #define PI 3.141592f
+#define Kilobytes(n) (n*1024LL)
+#define Megabytes(n) (Kilobytes(n)*1024LL)
+#define Gigabytes(n) (Megabytes(n)*1024LL)
+#define Terabytes(n) (Gigabytes(n)*1024LL)
 
 #if ASSERTIONS
 #define Assert(Expression) if(!(Expression)) {*(int *)0 = 0;}
@@ -29,8 +32,6 @@ typedef i32 bool32;
 #define InvalidCodePath Assert(!"Code should be unreachable")
 #define InvalidDefault default: Assert(!"Default should not be reached")
 
-struct _game_memory;
-struct _memory_arena;
 
 
 // Platform debug and intrinsic stuff
@@ -42,19 +43,11 @@ struct _memory_arena;
 #include <emmintrin.h>
 #include <string.h>
 // TODO: Do this in a nicer way and only define for DEBUG_BUILD
-#define sprintf_s snprintf
 
 #else
 
 #include <windows.h>
 #include <intrin.h>
-
-#if DEBUG_BUILD
-#pragma intrinsic(__rdtsc)
-LARGE_INTEGER _DEBUGPerformanceFrequency;
-bool _Junk_ = QueryPerformanceFrequency(&_DEBUGPerformanceFrequency);
-static float DEBUGPerfFrequency = (float)_DEBUGPerformanceFrequency.QuadPart;
-#endif
 
 #endif
 
@@ -63,10 +56,6 @@ static float DEBUGPerfFrequency = (float)_DEBUGPerformanceFrequency.QuadPart;
 #include "schm_strings.h"
 #include "schm_sound.h"
 
-#define Kilobytes(n) (n*1024LL)
-#define Megabytes(n) (Kilobytes(n)*1024LL)
-#define Gigabytes(n) (Megabytes(n)*1024LL)
-#define Terabytes(n) (Gigabytes(n)*1024LL)
 // TODO: Eventually calculate this based on what we actually need.
 #define PERMANENT_STORE_SIZE Megabytes(64)
 #define TRANSIENT_STORE_SIZE Megabytes(64)
@@ -265,7 +254,6 @@ typedef struct _game_memory {
     size_t TransientStorageSize;
     void* PermanentStorage;
     void* TransientStorage;
-    // TODO: Move these into their own struct for cleanliness?
     platform_get_wav_load_info* PlatformGetWavLoadInfo;
     platform_load_wav* PlatformLoadWav;
     platform_debug_write_file* PlatformDebugWriteFile;
@@ -778,5 +766,5 @@ RandHeading();
 internal inline v2
 RandV2InRadius(float R);
 
-#define NICKS_GAME_H 1
+#define SCHM_MAIN_H 1
 #endif

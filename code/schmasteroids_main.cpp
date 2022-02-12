@@ -2,6 +2,7 @@
 #include "schm_main.h"
 
 // NOTE: Always include, defines macros as nothing if we're not in benchmark mode
+#include "schm_game.h"
 #include "schm_bench.h"
 #include "schm_sound.cpp"
 #include "schm_hsl_simd1.h"
@@ -204,7 +205,7 @@ GAME_INITIALIZE(GameInitialize)
 extern "C"
 GAME_UPDATE_AND_RENDER(GameUpdateAndRender) 
 {
-     Assert(sizeof(metagame_state) < GameMemory->PermanentStorageSize);
+    Assert(sizeof(metagame_state) < GameMemory->PermanentStorageSize);
     metagame_state *Metagame = (metagame_state*)GameMemory->PermanentStorage;
     game_state *GameState = GetGameState(Metagame);
     BENCH_START_FRAME_ALL

@@ -1161,6 +1161,7 @@ WinMain(HINSTANCE Instance,
     else {
         // Registration failed
         // Call GetLastError for info?
+        // TODO: Error out with a messagebox?
     }
     return 0;
 }

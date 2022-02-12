@@ -1,5 +1,5 @@
 @echo off
-set Mode=HSL_DebugOptimized
+set Mode=Release
 
 set Preprocess=No
 
@@ -39,7 +39,7 @@ set dt=%date:~4,2%%date:~7,2%%date:~10,4%__%time:~0,2%_%time:~3,2%_%time:~6,2%_%
 set dt=%dt: =_%
 
 if %Preprocess%==Yes (
-    cl /C /P /EP /Fipreprocessed.cpp %SharedCompilerFlags% ..\code\schmasteroids_main.cpp
+    cl /C /P /EP /Fipreprocessed.cpp %SharedCompilerFlags% ..\code\schmasteroids_main.cpp /link -PDB:schmasteroids_preprocessed_%dt%.pdb 
     set MainSource=preprocessed.cpp
 ) else (
     set MainSource=..\code\schmasteroids_main.cpp
