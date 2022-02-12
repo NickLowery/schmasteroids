@@ -50,10 +50,16 @@ Pow(float Base, u32 Exp)
 }
 
 inline float
-Square(float Value);
+Square(float Value)
+{
+    return Value * Value;
+}
 
 inline float
-Sqrt(float Value);
+Sqrt(float Value)
+{
+    return sqrtf(Value);
+}
 
 internal inline int
 RoundToInt(float F);
@@ -269,7 +275,23 @@ Length(v2 Test) {
 }
 
 inline v2
-V2FromAngleAndMagnitude(float Angle, float Magnitude);
+Rotate(v2 V, float Angle)
+{
+    v2 Result;
+    float Sin = (float)sin(Angle);
+    float Cos = (float)cos(Angle);
+    Result.Y = (Sin * (V.X)) + (Cos * (V.Y));
+    Result.X = (Cos * (V.X)) - (Sin * (V.Y));
+    return Result;
+}
+
+inline v2
+V2FromAngleAndMagnitude(float Angle, float Magnitude) 
+{
+    v2 Result = Rotate(V2(Magnitude, 0), Angle);
+    return Result;
+}
+
 
 inline rect
 RectFromCenterAndDimensions(v2 Center, v2 Dimensions);
@@ -331,9 +353,6 @@ inline v2 Lerp(v2 A, float T, v2 B)
 
 internal v2
 ScaleV2ToMagnitude(v2 OldV, float NewMagnitude);
-
-internal v2
-Rotate(v2 V, float Angle);
 
 internal v2
 ClipEndPointToRect(v2 VIn, v2 VOut, rect Rect);

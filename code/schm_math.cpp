@@ -1,14 +1,3 @@
-inline float
-Square(float Value)
-{
-    return Value * Value;
-}
-
-inline float
-Sqrt(float Value)
-{
-    return sqrtf(Value);
-}
 
 inline int
 RoundToInt(float F)
@@ -48,23 +37,6 @@ ScaleV2ToMagnitude(v2 OldV, float NewMagnitude)
 }
 
 
-inline v2
-V2FromAngleAndMagnitude(float Angle, float Magnitude) 
-{
-    v2 Result = Rotate(V2(Magnitude, 0), Angle);
-    return Result;
-}
-
-internal v2
-Rotate(v2 V, float Angle)
-{
-    v2 Result;
-    float Sin = (float)sin(Angle);
-    float Cos = (float)cos(Angle);
-    Result.Y = (Sin * (V.X)) + (Cos * (V.Y));
-    Result.X = (Cos * (V.X)) - (Sin * (V.Y));
-    return Result;
-}
 
 inline rect
 RectFromCenterAndDimensions(v2 Center, v2 Dimensions)

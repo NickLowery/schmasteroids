@@ -7,10 +7,15 @@
 
 #include <emmintrin.h>
 #include <string.h>
-// TODO: Do this in a nicer way and only define for DEBUG_BUILD
-// #define snprintf
-
+#if DEBUG_BUILD
+// TODO: Deal with sprintf in a better way (that actually works on linux) 
+// for debug build only
+#define sprintf_s(...)
 #else
+#define sprintf_s(...)
+#endif
+
+#else //Windows
 
 #include <windows.h>
 #include <intrin.h>

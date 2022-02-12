@@ -1,6 +1,9 @@
 // TODO: Linux binary distribution stuff!!! Reference https://davidgow.net/handmadepenguin/ch16.html
 #include <SDL.h>
+#include <schm_platform_includes.h>
 #include <schm_main.h>
+#include <schm_platform.h>
+#include <schm_math.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <dlfcn.h>

@@ -87,7 +87,7 @@ PrintFromXBoundsAndCenterY(render_buffer *Renderer, metagame_state *Metagame,
 // NOTE: Returns max corner
 internal v2 
 PrintFromXBoundsAndTop(render_buffer *Renderer, metagame_state *Metagame, 
-        light_source *Light, char* CString, float Left, float Right, float Top)
+        light_source *Light, const char* CString, float Left, float Right, float Top)
 {
     u32 CharCount = StringLength(CString);
     v2 GlyphDim = CalculateGlyphDimFromWidth(Metagame, CharCount, Right - Left);
@@ -98,7 +98,7 @@ PrintFromXBoundsAndTop(render_buffer *Renderer, metagame_state *Metagame,
 // NOTE: Return min corner!
 internal v2
 PrintFromXBoundsAndBottom(render_buffer *Renderer, metagame_state *Metagame, 
-        light_source *Light, char* CString, float Left, float Right, float Bottom)
+        light_source *Light, const char* CString, float Left, float Right, float Bottom)
 {
     u32 CharCount = StringLength(CString);
     v2 GlyphDim = CalculateGlyphDimFromWidth(Metagame, CharCount, Right - Left);
