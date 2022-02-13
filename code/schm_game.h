@@ -201,6 +201,7 @@ CalculateMaxShotsOnScreen(u32 LevelNumber)
 // Maximum number of asteroids that could appear,  plus one for the temp that exists during  ExplodeAsteroid
 
 typedef struct {
+    xoshiro128pp_state RandState;
     //PLAYING
     level Level;
     u64 Score;

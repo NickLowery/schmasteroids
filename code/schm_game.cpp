@@ -12,29 +12,31 @@ SpawnSaucer(game_state *GameState, metagame_state *Metagame)
 {
     Assert(GameState->SaucerExists == false);
     GameState->SaucerExists = true;
-    i32 Edge = RandI32() % 4;
+    u32 Edge = RandU32(&GameState->RandState) % 4;
     switch (Edge) {
         // TOP
         case 0: { 
             GameState->Saucer.Position.Y = SCREEN_TOP;
             GameState->Saucer.Position.X = 
-                RandFloatRange(SCREEN_LEFT, SCREEN_RIGHT);
+                RandFloatRange(SCREEN_LEFT, SCREEN_RIGHT,
+                               &GameState->RandState);
         } break;
         // BOTTOM
         case 1: { 
             GameState->Saucer.Position.Y = SCREEN_BOTTOM;
             GameState->Saucer.Position.X = 
-                RandFloatRange(SCREEN_LEFT, SCREEN_RIGHT);
+                RandFloatRange(SCREEN_LEFT, SCREEN_RIGHT,
+                               &GameState->RandState);
         } break;
         case 2: { 
         //LEFT
             GameState->Saucer.Position.X = SCREEN_LEFT;
-            GameState->Saucer.Position.Y = RandFloatRange(SCREEN_TOP, SCREEN_BOTTOM);
+            GameState->Saucer.Position.Y = RandFloatRange(SCREEN_TOP, SCREEN_BOTTOM, &GameState->RandState);
         } break;
         case 3: { 
         //RIGHT
             GameState->Saucer.Position.X = SCREEN_RIGHT;
-            GameState->Saucer.Position.Y = RandFloatRange(SCREEN_TOP, SCREEN_BOTTOM);
+            GameState->Saucer.Position.Y = RandFloatRange(SCREEN_TOP, SCREEN_BOTTOM, &GameState->RandState);
         } break;
     }
     WarpPositionToScreen(&GameState->Saucer.Position);
@@ -44,8 +46,6 @@ SpawnSaucer(game_state *GameState, metagame_state *Metagame)
     GameState->SaucerShootTimer = GameState->Level.SaucerShootTime;
     PlaySound(Metagame, &Metagame->Sounds.SaucerSpawn, 0.45f);
 }
-
-
 
 inline void
 ExplodeObject(game_state *GameState, object *O, i32 ParticleCount, color Color)
@@ -83,7 +83,7 @@ ExplodeObject(game_state *GameState, object *O, i32 ParticleCount, color Color)
         }
         for (i32 PIndex = 0; PIndex < NewBlock->Count; ++PIndex) {
             NewBlock->ZDistSq[PIndex] = O->Light.ZDistSq;
-            v2 Scatter = RandV2InRadius(1.0f);
+            v2 Scatter = RandV2InRadius(1.0f, &GameState->RandState);
             NewBlock->Position[PIndex] = O->Position + (Scatter * O->CollisionRadius);
             NewBlock->Velocity[PIndex] = O->Velocity + (Scatter * PARTICLE_VELOCITY);
         }
@@ -128,13 +128,15 @@ ExplodeAsteroid(asteroid* Exploding, game_state *GameState, metagame_state *Meta
         for (int i = 0; i < AsteroidProps[Exploding->Size].Children; i++) {
             asteroid* Child = CreateAsteroid(ChildSize, GameState, &Metagame->LightParams);
             Child->O.Position = Exploding->O.Position + 
-                    RandV2InRadius(AsteroidProps[Exploding->Size].Radius/2);
+                    RandV2InRadius(AsteroidProps[Exploding->Size].Radius/2,
+                                   &GameState->RandState);
             WarpPositionToScreen(&Child->O.Position);
             Child->O.Velocity = Exploding->O.Velocity + 
-                    RandV2InRadius(EXPLODE_VELOCITY);
-            Child->O.Heading = RandFloatRange(0.0f, PI);
+                    RandV2InRadius(EXPLODE_VELOCITY, &GameState->RandState);
+            Child->O.Heading = RandFloatRange(0.0f, PI, &GameState->RandState);
             Child->O.Spin = Exploding->O.Spin + 
-                RandFloatRange(-EXPLODE_SPIN, EXPLODE_SPIN);
+                RandFloatRange(-EXPLODE_SPIN, EXPLODE_SPIN, 
+                               &GameState->RandState);
             Child->O.Light = Exploding->O.Light;
         }
     }
@@ -351,12 +353,16 @@ InitGameState(game_state *GameState, u32 LevelNumber, metagame_state *MetagameSt
     ZeroArray(GameState->Particles, particle);
     for(int AsteroidIndex = 0; AsteroidIndex < Level->StartingAsteroids; AsteroidIndex++) {
         asteroid *A = CreateAsteroid(MAX_ASTEROID_SIZE, GameState, &MetagameState->LightParams);
-        A->O.Position = V2(RandFloatRange(SCREEN_LEFT, SCREEN_RIGHT), RandFloatRange(SCREEN_TOP, SCREEN_BOTTOM));
+        A->O.Position = V2(RandFloatRange(SCREEN_LEFT, SCREEN_RIGHT, &GameState->RandState), 
+                           RandFloatRange(SCREEN_TOP, SCREEN_BOTTOM, &GameState->RandState));
         A->O.Velocity = V2FromAngleAndMagnitude(
-                RandHeading(), 
-                RandFloatRange(Level->AsteroidMinSpeed, Level->AsteroidMaxSpeed));
-        A->O.Heading = RandHeading();
-        A->O.Spin = RandFloatRange(-INIT_ASTEROID_MAX_SPIN, INIT_ASTEROID_MAX_SPIN);
+                RandHeading(&GameState->RandState), 
+                RandFloatRange(Level->AsteroidMinSpeed, Level->AsteroidMaxSpeed,
+                               &GameState->RandState));
+        A->O.Heading = RandHeading(&GameState->RandState);
+        A->O.Spin = RandFloatRange(-INIT_ASTEROID_MAX_SPIN, 
+                                   INIT_ASTEROID_MAX_SPIN, 
+                                   &GameState->RandState);
 
 
         v2 ToShip = GameState->Ship.Position - A->O.Position;
@@ -426,14 +432,15 @@ UpdateAndDrawGameplay(game_state *GameState, render_buffer *Renderer, game_input
                 particle *P = CreateParticle(GameState);
                 if (P) {
                     v2 ParticlePositionSpread = OldTailPos - V2FromAngleAndMagnitude((GameState->Ship.Heading +
-                                                                                    RandFloatRange(-1.2f, 1.2f)), 
+                                                                                    RandFloatRange(-1.2f, 1.2f, &GameState->RandState)), 
                                                                                     8.0f);
 
-                    P->Position = Lerp(OldTailPos, RandFloat01(), ParticlePositionSpread);
-                    float PHeading = GameState->Ship.Heading + PI + RandFloatRange(-1.0f, 1.0f);
+                    P->Position = Lerp(OldTailPos, RandFloat01(&GameState->RandState), ParticlePositionSpread);
+                    float PHeading = GameState->Ship.Heading + PI + RandFloatRange(-1.0f, 1.0f, &GameState->RandState);
                     P->Velocity = V2FromAngleAndMagnitude(PHeading, 15.0f) + GameState->Ship.Velocity;
                     float C_L = 6.0f;
-                    P->Light = {RandFloatRange(0.03f, 0.10f),
+                    P->Light = {RandFloatRange(0.03f, 0.10f, 
+                                               &GameState->RandState),
                                 1.0f, 
                                 1.0f, 
                                 C_L};

@@ -365,17 +365,6 @@ internal float
 GetAbsoluteDistance(v2 FirstV, v2 SecondV);
 
 
-internal void SeedPRNG(u32 Seed)
-{
-    srand(Seed);
-}
-
-internal inline i32
-RandI32()
-{
-    return rand();
-}
-
 typedef struct {
     __m128 Val;
 } float4;
@@ -441,44 +430,107 @@ inline float4 Float4Max(float4 A, float4 B)
     return Result;
 }
 
+// PRNG
+// NOTE: We're using xoshiro128++ here. Simple xorshift would probably be 
+// just fine. But I think this should be plenty fast and certainly high enough
+// quality for our purposes. If it's slow do more testing.
+typedef struct {
+    uint32_t s[4];
+} xoshiro128pp_state;
+
+u64 SplitMixNext(u64 *State) 
+{
+    u64 z = (*State += 0x9e3779b97f4a7c15);
+    z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
+    z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
+    return z ^ (z >> 31);
+}
+
+
+inline void SeedXoshiro128pp(xoshiro128pp_state *State, u64 Seed)
+{
+    // TODO: Make sure this is getting called
+    State->s[0] = (uint32_t)SplitMixNext(&Seed);
+    State->s[1] = (uint32_t)SplitMixNext(&Seed);
+    State->s[2] = (uint32_t)SplitMixNext(&Seed);
+    State->s[3] = (uint32_t)SplitMixNext(&Seed);
+}
+
+inline u32 Rotl32(u32 x, int k)
+{
+    u32 Result = (x << k) | (x >> (32 - k));
+    return Result;
+}
+
+inline u32 Xoshiro128ppNext(xoshiro128pp_state *State) 
+{
+    u32 Result = Rotl32(State->s[0] + State->s[3], 7) + State->s[0];
+    u32 t = State->s[1] << 9;
+    State->s[2] ^= State->s[0];
+	State->s[3] ^= State->s[1];
+	State->s[1] ^= State->s[2];
+	State->s[0] ^= State->s[3];
+
+	State->s[2] ^= t;
+
+	State->s[3] = Rotl32(State->s[3], 11);
+
+	return Result;
+}
+
+inline u32 RandU32(xoshiro128pp_state *State)
+{
+#if 1
+    u32 Result = Xoshiro128ppNext(State);
+    return Result;
+#else
+    return 0;
+#endif
+
+}
+
+
 /* Returns a pseudorandom float between 0 and 1 */
 internal inline float
-RandFloat01()
+RandFloat01(xoshiro128pp_state *State)
 {
-    return (float)rand() / (float)RAND_MAX;
-    //TODO: There's probably a way better way to do this. Get a random significand, set exponent to 0, subtract 1?
-    //Something like that.
+    // NOTE: We could do this in a more robust way a la https://allendowney.com/research/rand/ but I don't think it's at all necessary for our purposes
+    u32 U32Result = Xoshiro128ppNext(State);
+    float Result = (float)(U32Result >> 8) * 0x1.0p-24f;
+    Assert(Result >= 0);
+    Assert(Result < 1.0f);
+    return Result;
 }
 
 internal inline float
-RandFloatRange(float Min, float Max)
+RandFloatRange(float Min, float Max, xoshiro128pp_state *State)
 {
-    return ((RandFloat01() * (Max - Min)) + Min);
-    //TODO: There's probably a way better way to do this
+    return ((RandFloat01(State) * (Max - Min)) + Min);
 }
 
 internal inline float
-RandHeading()
+RandHeading(xoshiro128pp_state *State)
 {
-    return (RandFloat01() * 2.0f * PI);
+    return (RandFloat01(State) * 2.0f * PI);
 }
 internal inline v2
-RandV2InRadius(float R) 
+RandV2InRadius(float R, xoshiro128pp_state *State) 
 {
-    return V2FromAngleAndMagnitude(RandHeading(), RandFloatRange(0.0f, R));
+    return V2FromAngleAndMagnitude(RandHeading(State), 
+            RandFloatRange(0.0f, R, State));
 }
 
 internal inline __m128
-RandFloat01_4()
+RandFloat01_4(xoshiro128pp_state *State)
 {
-    __m128 Result = _mm_set_ps(RandFloat01(),  RandFloat01(), RandFloat01(),  RandFloat01());
+    __m128 Result = _mm_set_ps(RandFloat01(State),  RandFloat01(State), RandFloat01(State),  RandFloat01(State));
     return Result;
 }
 
 internal inline __m128
-RandHeading_4()
+RandHeading_4(xoshiro128pp_state *State)
 {
-    __m128 Result = _mm_mul_ps(RandFloat01_4(), _mm_set_ps1(2.0f * PI));
+    __m128 Result = _mm_mul_ps(RandFloat01_4(State), _mm_set_ps1(2.0f * PI));
     return Result;
 }
 

@@ -42,18 +42,15 @@ GetGameState(metagame_state *MetagameState)
 }
 
 extern "C"
-GAME_SEED_PRNG(SeedRandom)
-{
-    SeedPRNG(Seed);
-}
-
-extern "C"
 GAME_INITIALIZE(GameInitialize) 
 {
     Assert(sizeof(metagame_state) < GameMemory->PermanentStorageSize);
     metagame_state *Metagame = (metagame_state*)GameMemory->PermanentStorage;
     Metagame->GameMemory = GameMemory;
     game_state *GameState = GetGameState(Metagame);
+
+    SeedXoshiro128pp(&GameState->RandState, GameMemory->PlatformGetU64Seed());
+
     Assert(GameMemory->IsSetToZero);
     GameMemory->IsSetToZero = false;
     InitializeArena(&Metagame->TransientArena, GameMemory->TransientStorageSize, GameMemory->TransientStorage);
@@ -87,6 +84,7 @@ GAME_INITIALIZE(GameInitialize)
 
 #if DEBUG_BUILD
     editor_state *EditorState = GetEditorState(Metagame);
+    SeedXoshiro128pp(&EditorState->EditGameState.RandState, GameMemory->PlatformGetU64Seed());
     u64 EditMemorySize = Kilobytes(16);
     InitializeArena(&EditorState->EditArena, 
             EditMemorySize,
@@ -559,17 +557,23 @@ CreateAsteroid(int Size, game_state *GameState, light_params *LightParams)
     Result->O.CollisionRadius = AsteroidProps[Size].Radius;
 
     Result->O.Light = LightParams->AsteroidLightMin;
-    Result->O.Light.H += RandFloatRange(0.0f, LightParams->AsteroidHRange);
+    Result->O.Light.H += RandFloatRange(0.0f, LightParams->AsteroidHRange, 
+                                        &GameState->RandState);
     Result->O.Light.H = EuclideanMod(Result->O.Light.H, 1.0f);
-    Result->O.Light.S += RandFloatRange(0.0f, LightParams->AsteroidSRange);
-    Result->O.Light.ZDistSq += RandFloatRange(0.0f, LightParams->AsteroidZDistSqRange);
-    Result->O.Light.C_L += RandFloatRange(0.0f, LightParams->AsteroidC_LRange);
+    Result->O.Light.S += RandFloatRange(0.0f, LightParams->AsteroidSRange, 
+                                        &GameState->RandState);
+    Result->O.Light.ZDistSq += RandFloatRange(0.0f, 
+                                              LightParams->AsteroidZDistSqRange,
+                                              &GameState->RandState);
+    Result->O.Light.C_L += RandFloatRange(0.0f, LightParams->AsteroidC_LRange,
+                                          &GameState->RandState);
         
     int VCount = Result->O.VerticesCount = MAX_VERTICES;
     for(int VIndex = 0; VIndex < VCount; VIndex++) {
         float Angle = (2.0f * PI / (float)VCount) * VIndex;
         v2 Vertex = V2FromAngleAndMagnitude(Angle, AsteroidProps[Size].Radius);
-        Vertex += RandV2InRadius(AsteroidProps[Size].Irregularity);
+        Vertex += RandV2InRadius(AsteroidProps[Size].Irregularity,
+                                 &GameState->RandState);
         Result->O.Vertices[VIndex] = Vertex;
     }
 

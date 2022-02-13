@@ -130,8 +130,8 @@ ResetAsteroids(editor_state *EditorState, metagame_state *Metagame)
                 ++Col)
         {
             asteroid *A = CreateAsteroid(Row, &EditorState->EditGameState, &Metagame->LightParams);
-            A->O.Heading = RandHeading();
-            A->O.Spin = RandFloatRange(-INIT_ASTEROID_MAX_SPIN, INIT_ASTEROID_MAX_SPIN);
+            A->O.Heading = RandHeading(&EditGame->RandState);
+            A->O.Spin = RandFloatRange(-INIT_ASTEROID_MAX_SPIN, INIT_ASTEROID_MAX_SPIN, &EditGame->RandState);
             A->O.Position = CenterOfRect(PlacementRect);
             A->O.Velocity = V2(0.0f,0.0f);
             PlacementRect += XOnly(PlacementRectDim);

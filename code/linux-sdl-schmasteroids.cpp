@@ -29,7 +29,6 @@ typedef struct _linux_game_code {
     game_update_and_render *UpdateAndRender;
     game_initialize *Initialize;
     game_get_sound_output *GetSoundOutput;
-    game_seed_prng *SeedRandom;
     bool32 IsValid;
 } linux_game_code;
 
@@ -253,6 +252,12 @@ PLATFORM_TOGGLE_FULLSCREEN(LinuxSDLToggleFullScreen)
     }
 }
 
+PLATFORM_GETU64_SEED(LinuxGetU64Seed)
+{
+    u64 RandomSeedCounter = SDL_GetPerformanceCounter();
+    return RandomSeedCounter;
+}
+
 void * LoadGameFunction(void *SO, const char *FunctionName) {
     void *Result = dlsym(SO, FunctionName);
     char *DLErrorOutput = dlerror();
@@ -279,8 +284,6 @@ linux_game_code LoadGameCode() {
             LoadGameFunction(Result.SO, "GameInitialize");
         Result.UpdateAndRender = (game_update_and_render*)
             LoadGameFunction(Result.SO, "GameUpdateAndRender");
-        Result.SeedRandom = (game_seed_prng*)
-            LoadGameFunction(Result.SO, "SeedRandom");
         Result.IsValid = true;
     } else {
         printf("load failed\n");
@@ -379,13 +382,9 @@ int main(int argc, char *argv[])
     GameMemory.PlatformDebugSaveFramebufferAsBMP = &LinuxSDLDebugSaveFramebufferAsBMP;
     GameMemory.PlatformQuit = &LinuxSDLQuit;
     GameMemory.PlatformToggleFullscreen = &LinuxSDLToggleFullScreen;
+    GameMemory.PlatformGetU64Seed = &LinuxGetU64Seed;
 
     if (Game.IsValid) {
-        // Seed PRNG
-        u64 RandomSeedCounter = SDL_GetPerformanceCounter();
-        u64 U32Mask = (u64)UINT32_MAX;
-        u32 RandomSeed = (u32)(RandomSeedCounter & U32Mask);
-        Game.SeedRandom(RandomSeed);
         //Initialize game
         Game.Initialize(&OutputData.FrameBuffer, &GameMemory);
     }
@@ -484,7 +483,6 @@ int main(int argc, char *argv[])
         u64 PreUpdateCycles = _rdtsc();
 
         if (Game.IsValid) {
-            printf("Updating game\n");
 
 
             // NOTE: I tried using SDL_LockTexture instead of SDL_UpdateTexture 
@@ -542,8 +540,6 @@ int main(int argc, char *argv[])
             }
             Assert(BytesToWrite % BytesPerAFrame == 0);
             SoundBuffer.AFramesToWrite = BytesToWrite / BytesPerAFrame;
-            printf("SoundPaddingBytes = %d\n", SoundPaddingBytes);
-            printf("Writing %d audio frames\n", SoundBuffer.AFramesToWrite);
             if (BytesToWrite > SoundBufferSize) {
                 InvalidCodePath;
                 printf("Audio error, BytesToWrite is too large\n");

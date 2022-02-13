@@ -156,6 +156,9 @@ typedef PLATFORM_QUIT(platform_quit);
 #define PLATFORM_TOGGLE_FULLSCREEN(name) void name(void)
 typedef PLATFORM_TOGGLE_FULLSCREEN(platform_toggle_fullscreen);
 
+#define PLATFORM_GETU64_SEED(name) u64 name(void)
+typedef PLATFORM_GETU64_SEED(platform_getu64_seed);
+
 typedef struct _game_memory {
     bool32 IsSetToZero;
     size_t PermanentStorageSize;
@@ -169,6 +172,7 @@ typedef struct _game_memory {
     platform_debug_save_framebuffer_as_bmp * PlatformDebugSaveFramebufferAsBMP;
     platform_quit* PlatformQuit;
     platform_toggle_fullscreen* PlatformToggleFullscreen;
+    platform_getu64_seed* PlatformGetU64Seed;
 } game_memory;
 
 // Services the game provides to the platform layer

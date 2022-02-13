@@ -275,8 +275,6 @@ internal FILETIME Win32GetLastWriteTime(char *Filename)
     return Result;
 }
 
-#define LOOP_RANDOM_SEED 526
-// TODO: We could get rid of this if we had our own PRNG that keeps state in game memory
 
 // TODO: Write game state to memory-mapped file instead of a regular file to speed this up
 // TODO: Record memory and input separately for greater flexibility?
@@ -284,7 +282,6 @@ internal void
 Win32StartRecording(win32_state *WinState, win32_game_code Game, u8 Index) 
 {
 
-    Game.SeedRandom(LOOP_RANDOM_SEED);
     Assert(Index < 99);
     Assert(WinState->BuildDirPathLen < MAX_PATH - 9);
     char RecordFilename[9];
@@ -318,7 +315,6 @@ Win32EndRecording(win32_state* WinState)
 internal void
 Win32StartPlayback(win32_state *WinState, win32_game_code Game, u8 Index) 
 {
-    Game.SeedRandom(LOOP_RANDOM_SEED);
     Assert(Index < 99);
     Assert(WinState->BuildDirPathLen < MAX_PATH - 9);
     char Filename[9];
