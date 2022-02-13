@@ -4,6 +4,36 @@
 #define MENU_S 0.8f
 #define MENU_C_L 4.0f
 #define MENU_ZDISTSQ 4.0f
+
+inline void
+SetUpStartScreen(metagame_state *Metagame)
+{
+    Metagame->StartScreenState = StartScreenState_TitleAppearing;
+    Metagame->StartScreenTimer = TITLE_APPEAR_TIME;
+    Metagame->StartMenuOption = MenuOption_Play;
+}
+
+inline void
+SetUpLevelStartScreen(metagame_state *Metagame, i32 LevelNumber)
+{
+    Assert(LevelNumber <= 99);
+
+    SetStringFromNumber(Metagame->LevelNumberString, LevelNumber, ArrayCount(Metagame->LevelNumberString));
+}
+
+inline void
+SetModeChangeTimer(metagame_state *Metagame, float Seconds)
+{
+    Metagame->ModeChangeTimer = Seconds;
+    Metagame->ModeChangeTimerMax = Seconds;
+}
+
+inline void
+SetUpEndScreen(metagame_state *Metagame)
+{
+    Metagame->EndScreenLightH = 0.0f;
+}
+
 internal void
 UpdateAndDrawLevelStartScreen(metagame_state *Metagame, render_buffer *Renderer, game_input *Input, float SceneAlpha = 255)
 {
@@ -46,11 +76,6 @@ UpdateAndDrawLevelStartScreen(metagame_state *Metagame, render_buffer *Renderer,
             SecondLineMinCorner, GlyphDim);
 }
 
-internal void
-SetUpEndScreen(metagame_state *Metagame)
-{
-    Metagame->EndScreenLightH = 0.0f;
-}
 
 internal void
 DrawEndScreen(metagame_state *Metagame, render_buffer *Renderer, game_input *Input, float SceneAlpha = 255) {

@@ -43,8 +43,12 @@ typedef struct _metagame_state {
 } metagame_state;
 
 inline game_state *
-GetGameState(metagame_state *MetagameState);
-    
+GetGameState(metagame_state *MetagameState)
+{
+    game_state *Result = &MetagameState->GameState;
+    return Result;
+}
+
 inline void
 SetModeChangeTimer(metagame_state *MetagameState, float Seconds);
 

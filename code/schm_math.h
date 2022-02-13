@@ -61,11 +61,34 @@ Sqrt(float Value)
     return sqrtf(Value);
 }
 
-internal inline int
-RoundToInt(float F);
+inline int
+RoundToInt(float F)
+{
+    return (int)(F+0.5f);
+}
+
+inline float
+Sin(float F)
+{
+    float Result = sinf(F);
+    return Result;
+}
 
 inline i32
-Floor(float F);
+Floor(float F) 
+{
+    i32 Result = (i32)floorf(F);
+    return Result;
+}
+
+constexpr inline i32 Ceil(float F)
+{
+    i32 Result = (i32)F;
+    if ((float)Result != F && (F > 0)) {
+        ++Result;
+    }
+    return Result;
+}
 
 typedef struct _v2 {
     union {

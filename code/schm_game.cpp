@@ -1,3 +1,4 @@
+
 internal void
 SetSaucerCourse(game_state *GameState) 
 {
@@ -611,4 +612,191 @@ UpdateAndDrawGameplay(game_state *GameState, render_buffer *Renderer, game_input
 
     BENCH_STOP_COUNTING_CYCLES_USECONDS(DrawGame)
 
+}
+
+inline void
+SetUpLevel(metagame_state *Metagame, i32 LevelNumber)
+{
+    game_state *GameState = GetGameState(Metagame);
+    Assert(LevelNumber <= 99);
+    InitGameState(GameState, LevelNumber, Metagame);
+}
+
+// We just use simple circular collisions
+internal bool32
+Collide(object *O1, object *O2, game_state *GameState) 
+{
+    return (GetAbsoluteDistance(O1->Position, O2->Position) < (O1->CollisionRadius + O2->CollisionRadius)); 
+}
+
+internal bool32
+Collide(particle *P, object *O, game_state *GameState)
+{
+    return (GetAbsoluteDistance(P->Position, O->Position) < (O->CollisionRadius));
+}
+
+inline particle*
+CreateShot(game_state *GameState)
+{
+    particle* Result = &GameState->Shots[GameState->ShotCount++];
+    Assert(GameState->ShotCount < MAX_SHOTS);
+
+    Result->tLMod = 0.0f;
+    Result->SecondsToLive = SHOT_LIFETIME;
+    return Result;
+}
+
+internal void MoveObject(object *O, float SecondsElapsed, game_state *GameState) 
+{
+    MovePosition(&O->Position, SecondsElapsed * O->Velocity, GameState);
+    O->Heading += (SecondsElapsed * O->Spin);
+}
+
+
+internal void MoveParticle(particle *P, float SecondsElapsed, game_state *GameState)
+{
+    MovePosition(&P->Position, SecondsElapsed * P->Velocity, GameState);
+}
+
+internal void WarpPositionToScreen(v2 *Pos)
+{
+    if(Pos->X > SCREEN_RIGHT) {
+        do {
+            Pos->X -= SCREEN_WIDTH;
+        } while (Pos->X > SCREEN_RIGHT);
+    } else while (Pos->X < SCREEN_LEFT) {
+        Pos->X += SCREEN_WIDTH;
+    }
+    if(Pos->Y > SCREEN_BOTTOM) {
+        do {
+            Pos->Y -= SCREEN_HEIGHT;
+        } while (Pos->Y > SCREEN_BOTTOM);
+    } else while (Pos->Y < SCREEN_TOP) {
+        Pos->Y += SCREEN_HEIGHT;
+    }
+    Assert(InRect(*Pos, ScreenRect));
+}
+
+inline void MovePosition(v2 *Pos, v2 Delta, game_state *GameState)
+{
+    *Pos += Delta;
+    WarpPositionToScreen(Pos);
+}
+
+inline void 
+MovePositionUnwarped(v2 *Pos, v2 Delta)
+{
+    *Pos += Delta;
+}
+
+// Calling code is in charge of all the other object properties except the collision radius
+// and vertices
+internal asteroid*
+CreateAsteroid(int Size, game_state *GameState, light_params *LightParams)
+{
+    Assert(Size <= MAX_ASTEROID_SIZE);
+    asteroid *Result = GameState->Asteroids + GameState->AsteroidCount++;
+
+    Result->Size = (u8)Size;
+    Result->O.CollisionRadius = AsteroidProps[Size].Radius;
+
+    Result->O.Light = LightParams->AsteroidLightMin;
+    Result->O.Light.H += RandFloatRange(0.0f, LightParams->AsteroidHRange, 
+                                        &GameState->RandState);
+    Result->O.Light.H = EuclideanMod(Result->O.Light.H, 1.0f);
+    Result->O.Light.S += RandFloatRange(0.0f, LightParams->AsteroidSRange, 
+                                        &GameState->RandState);
+    Result->O.Light.ZDistSq += RandFloatRange(0.0f, 
+                                              LightParams->AsteroidZDistSqRange,
+                                              &GameState->RandState);
+    Result->O.Light.C_L += RandFloatRange(0.0f, LightParams->AsteroidC_LRange,
+                                          &GameState->RandState);
+        
+    int VCount = Result->O.VerticesCount = MAX_VERTICES;
+    for(int VIndex = 0; VIndex < VCount; VIndex++) {
+        float Angle = (2.0f * PI / (float)VCount) * VIndex;
+        v2 Vertex = V2FromAngleAndMagnitude(Angle, AsteroidProps[Size].Radius);
+        Vertex += RandV2InRadius(AsteroidProps[Size].Irregularity,
+                                 &GameState->RandState);
+        Result->O.Vertices[VIndex] = Vertex;
+    }
+
+    return Result;
+}
+
+
+internal void
+MoveAsteroids(float SecondsElapsed, game_state *GameState) 
+{
+    for (u32 AIndex = 0; AIndex < GameState->AsteroidCount; AIndex++) {
+        MoveObject(&(GameState->Asteroids[AIndex].O), SecondsElapsed, GameState);
+    }
+}
+
+internal void
+MoveShots(float SecondsElapsed, game_state *GameState)
+{
+    for (u32 SIndex = 0; SIndex < GameState->ShotCount; SIndex++) {
+        particle *ThisShot = &GameState->Shots[SIndex];
+        if (UpdateAndCheckTimer(&ThisShot->SecondsToLive, SecondsElapsed)) {
+            RemoveShot(GameState, SIndex);
+        } 
+
+        // We could be moving a shot we just invalidated if it's the last one in the array
+        // but it won't hurt anything
+        ThisShot->tLMod += 16.0f * SecondsElapsed;
+        if (ThisShot->tLMod > 2.0f*PI) {
+            ThisShot->tLMod -= 2.0f*PI;
+        }
+        ThisShot->Light.C_L = ThisShot->C_LOriginal + (0.5f*Sin(ThisShot->tLMod));
+        MoveParticle(ThisShot, SecondsElapsed, GameState);
+    }
+}
+
+internal void
+MoveParticles(float SecondsElapsed, game_state *GameState)
+{
+    // Move ungrouped particles
+    for (u32 PIndex = 0; PIndex < GameState->ParticleCount; PIndex++) {
+        particle *ThisParticle = &GameState->Particles[PIndex];
+        if (UpdateAndCheckTimer(&ThisParticle->SecondsToLive, SecondsElapsed)) {
+            RemoveParticle(GameState, PIndex);
+        }
+        // We could be moving a particle we just invalidated but it won't hurt anything
+        ThisParticle->Light.C_L = ThisParticle->C_LOriginal * (ThisParticle->SecondsToLive / PARTICLE_LIFETIME);
+        MoveParticle(ThisParticle, SecondsElapsed, GameState);
+    }
+    // Move particles in groups
+    for (particle_group **GroupPointer = &GameState->FirstParticleGroup;
+         *GroupPointer;
+        )
+    {
+        particle_group *Group = *GroupPointer;
+        if (UpdateAndCheckTimer(&Group->SecondsToLive, SecondsElapsed)) {
+            particle_block *Block = Group->FirstBlock;
+            while(Block->NextBlock) {
+                Block = Block->NextBlock;
+            }
+            Block->NextBlock= GameState->FirstFreeParticleBlock;
+            GameState->FirstFreeParticleBlock = Group->FirstBlock;
+
+            particle_group *NextGroupToProcess = Group->NextGroup;
+            Group->NextGroup = GameState->FirstFreeParticleGroup;
+            GameState->FirstFreeParticleGroup = Group;
+            *GroupPointer = NextGroupToProcess;
+        } else {
+            for (particle_block *Block = Group->FirstBlock;
+                Block;
+                Block = Block->NextBlock)
+            {
+                for (i32 PIndex = 0;
+                    PIndex < Block->Count;
+                    ++PIndex)
+                {
+                    MovePositionUnwarped(&Block->Position[PIndex], Block->Velocity[PIndex] * SecondsElapsed);
+                }
+            }
+            GroupPointer = &Group->NextGroup;
+        }
+    }
 }

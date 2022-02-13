@@ -154,6 +154,13 @@ inline void ZeroSize_(void* StartAddress, size_t Size)
     memset(StartAddress, 0, Size);
 }
 
+inline bool32
+UpdateAndCheckTimer(float *Timer, float SecondsElapsed)
+{
+    *Timer -= SecondsElapsed;
+    bool32 TimeUp = (*Timer <= 0.0f);
+    return TimeUp;
+}
 
 #define SCHM_MAIN_H 1
 #endif

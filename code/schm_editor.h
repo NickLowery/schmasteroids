@@ -126,5 +126,21 @@ DeletePointIfOrphaned(editor_state *EditorState, working_point *Point, working_g
 internal void
 DeleteActiveSeg(editor_state *EditorState, working_glyph *Glyph); 
 
+inline v2 MapWindowSpaceToGameSpace(v2 WindowCoords, platform_framebuffer *Backbuffer)
+{
+    v2 Result;
+    Result.X = (SCREEN_WIDTH / Backbuffer->Width ) * (WindowCoords.X + 0.5f);
+    Result.Y = (SCREEN_HEIGHT / Backbuffer->Height ) * (WindowCoords.Y + 0.5f);
+    return Result;
+}
+
+inline v2 MapGameSpaceToWindowSpace(v2 In, platform_framebuffer *Backbuffer)
+{
+    v2 Result;
+    Result.X = ((Backbuffer->Width / SCREEN_WIDTH) * In.X) - 0.5f;
+    Result.Y = ((Backbuffer->Height / SCREEN_HEIGHT) * In.Y) - 0.5f;
+    return Result;
+}
+
 #define SCHM_EDITOR_H 1
 #endif

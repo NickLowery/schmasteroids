@@ -1,31 +1,33 @@
-
-inline int
-RoundToInt(float F)
+internal float
+GetAbsoluteDistance(v2 FirstV, v2 SecondV) 
 {
-    return (int)(F+0.5f);
+    return Length(ShortestPath(FirstV, SecondV));
 }
 
-inline float
-Sin(float F)
+internal v2 
+ShortestPath(v2 From, v2 To)
 {
-    float Result = sinf(F);
-    return Result;
-}
+    Assert(InRect(From, ScreenRect));
+    Assert(InRect(To, ScreenRect));
 
-inline i32
-Floor(float F) 
-{
-    i32 Result = (i32)floorf(F);
-    return Result;
-}
+    v2 Diff = To - From;
 
-constexpr inline i32 Ceil(float F)
-{
-    i32 Result = (i32)F;
-    if ((float)Result != F && (F > 0)) {
-        ++Result;
+    float HalfScreenWidth = SCREEN_WIDTH/2.0f;
+    if (Diff.X > HalfScreenWidth) {
+        Diff.X -= SCREEN_WIDTH;
     }
-    return Result;
+    if (Diff.X < -HalfScreenWidth) {
+        Diff.X += SCREEN_WIDTH;
+    }
+    float HalfScreenHeight = SCREEN_HEIGHT/2.0f;
+    if (Diff.Y > HalfScreenHeight) {
+        Diff.Y -= SCREEN_HEIGHT;
+    }
+    if (Diff.Y < -HalfScreenHeight) {
+        Diff.Y += SCREEN_HEIGHT;
+    }
+
+    return Diff;
 }
 
 internal v2
