@@ -449,7 +449,6 @@ u64 SplitMixNext(u64 *State)
 
 inline void SeedXoshiro128pp(xoshiro128pp_state *State, u64 Seed)
 {
-    // TODO: Make sure this is getting called
     State->s[0] = (uint32_t)SplitMixNext(&Seed);
     State->s[1] = (uint32_t)SplitMixNext(&Seed);
     State->s[2] = (uint32_t)SplitMixNext(&Seed);

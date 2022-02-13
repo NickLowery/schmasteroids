@@ -549,7 +549,7 @@ internal void HandleKeyboardMessage(MSG Message, game_button_input *KeyInput)
 
 internal void InitWASAPI(i32 SamplesPerSecond, i32 BufferRequestedAFrames)
 {
-    // TODO: Fix so it works with my USB interface!
+    // TODO: Fix so it works with my USB interface / Different sample rates?
     // NOTE: Revisit if I'm multithreading.
     if(FAILED(CoInitializeEx(0, COINIT_SPEED_OVER_MEMORY))) {
         Assert(!"WASAPI Error");
@@ -1070,8 +1070,6 @@ WinMain(HINSTANCE Instance,
                             } else if (WinState.GameRecordIndex) {
                                 Win32RecordInput(&WinState, ThisInput);
                             }
-                            // TODO: Try polling the mouse position here and see if it makes the cursor 
-                            // lag less with respect to OS cursor
                             if (Game.IsValid) {
                                 Game.UpdateAndRender(&GlobalBackbuffer, ThisInput, &WinState.GameMemory);
                             }
