@@ -263,6 +263,20 @@ PLATFORM_LOAD_WAV(Win32LoadWav)
     }
 }
 
+
+PLATFORM_GETU64_SEED(Win32GetU64Seed)
+{
+    SYSTEMTIME SystemTime;
+    FILETIME FileTime;
+    ULARGE_INTEGER ULargeInteger;
+    GetSystemTime(&SystemTime);
+    SystemTimeToFileTime(&SystemTime, &FileTime);
+    ULargeInteger.LowPart = FileTime.dwLowDateTime;
+    ULargeInteger.HighPart = FileTime.dwHighDateTime;
+    u64 Result = ULargeInteger.QuadPart;
+    return Result;
+}
+
 internal FILETIME Win32GetLastWriteTime(char *Filename)
 {
     FILETIME Result = {};
@@ -422,7 +436,6 @@ internal win32_game_code GetGameCode(win32_exe_info *EXEInfo)
             Result.GetSoundOutput = (game_get_sound_output*)GetProcAddress(Result.GameDLL, "GameGetSoundOutput");
             Result.Initialize = (game_initialize*)GetProcAddress(Result.GameDLL, "GameInitialize");
             Result.UpdateAndRender = (game_update_and_render*)GetProcAddress(Result.GameDLL, "GameUpdateAndRender");
-            Result.SeedRandom = (game_seed_prng*)GetProcAddress(Result.GameDLL, "SeedRandom");
             Result.IsValid = (Result.GetSoundOutput && Result.Initialize && Result.UpdateAndRender);
         }
         if (!Result.IsValid)
@@ -430,7 +443,6 @@ internal win32_game_code GetGameCode(win32_exe_info *EXEInfo)
             Result.GetSoundOutput = GameGetSoundOutputStub;
             Result.Initialize = GameInitializeStub;
             Result.UpdateAndRender = GameUpdateAndRenderStub;
-            Result.SeedRandom = GameSeedPRNGStub;
         }
     }
     return Result;
@@ -819,6 +831,7 @@ WinMain(HINSTANCE Instance,
             WinState.GameMemory.PlatformDebugSaveFramebufferAsBMP = &Win32DebugSaveFramebufferAsBMP;
             WinState.GameMemory.PlatformQuit = &Win32Quit;
             WinState.GameMemory.PlatformToggleFullscreen = &Win32ToggleFullScreen;
+            WinState.GameMemory.PlatformGetU64Seed = &Win32GetU64Seed;
 
             if (WinState.GameMemory.PermanentStorage) {
                 // VirtualAlloc sets memory to 0 per MSDN
