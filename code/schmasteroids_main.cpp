@@ -7,12 +7,12 @@
 #include "schm_sound.h"
 #include "schm_color.h"
 #include "schm_glyph.h"
-#include "schm_start_screen.h"
 #include "schm_game.h"
 #if DEBUG_BUILD
 #include "schm_editor.h"
 #endif
 #include "schm_metagame.h"
+#include "schm_titles.h"
 
 // NOTE: Always include, defines macros as nothing if we're not in benchmark mode
 #include "schm_bench.h"

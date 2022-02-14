@@ -1,5 +1,5 @@
-
 #ifndef SCHM_METAGAME_H
+enum start_screen_state;
 typedef struct _metagame_state {
     // NOTE: For now, nothing persists past frame boundaries in the transient arena, i.e.
     // it's all temporary memory

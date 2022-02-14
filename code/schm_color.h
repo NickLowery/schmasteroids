@@ -30,8 +30,6 @@ NullColor(void)
     return Color(0);
 }
 
-
-
 typedef union {
     color Colors[4];
     __m128i IVec;
