@@ -3,7 +3,7 @@ internal void
 SetSaucerCourse(game_state *GameState) 
 {
     if (GameState->ShipExists) {
-        v2 SaucerToShip = ShortestPath(GameState->Saucer.Position, GameState->Ship.Position);
+        v2 SaucerToShip = ShortestPathWarped(GameState->Saucer.Position, GameState->Ship.Position);
         GameState->Saucer.Velocity = ScaleV2ToMagnitude(SaucerToShip, GameState->Level.SaucerSpeed);
     }
 }
@@ -181,7 +181,7 @@ inline void SaucerShoot(metagame_state *Metagame, v2 ShotVector)
 internal void
 SaucerShootDumb(game_state *GameState, metagame_state *Metagame) 
 {
-    v2 VectorToShip = ShortestPath(GameState->Saucer.Position, GameState->Ship.Position);
+    v2 VectorToShip = ShortestPathWarped(GameState->Saucer.Position, GameState->Ship.Position);
     SaucerShoot(Metagame, VectorToShip);
 }
 
@@ -626,13 +626,13 @@ SetUpLevel(metagame_state *Metagame, i32 LevelNumber)
 internal bool32
 Collide(object *O1, object *O2, game_state *GameState) 
 {
-    return (GetAbsoluteDistance(O1->Position, O2->Position) < (O1->CollisionRadius + O2->CollisionRadius)); 
+    return (GetDistanceWarped(O1->Position, O2->Position) < (O1->CollisionRadius + O2->CollisionRadius)); 
 }
 
 internal bool32
 Collide(particle *P, object *O, game_state *GameState)
 {
-    return (GetAbsoluteDistance(P->Position, O->Position) < (O->CollisionRadius));
+    return (GetDistanceWarped(P->Position, O->Position) < (O->CollisionRadius));
 }
 
 inline particle*

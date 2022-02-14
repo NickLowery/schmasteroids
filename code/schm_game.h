@@ -27,6 +27,8 @@
 #define SHOT_COOLDOWN_TIME 0.15f
 #define SHOT_LIFETIME 1.0f
 
+#define GAME_OVER_TIME 1.5f
+
 // NOTE: This is only for ungrouped particles, which currently means only the ship's exhaust, so 500 seems 
 // to be plenty
 #define MAX_PARTICLES 500
@@ -50,7 +52,38 @@ static constexpr v2 ScreenCenter = {SCREEN_WIDTH/2.0f, SCREEN_HEIGHT/2.0f};
 static constexpr rect ScreenRect = {SCREEN_LEFT, SCREEN_TOP, SCREEN_RIGHT, SCREEN_BOTTOM};
 
 
-#define GAME_OVER_TIME 1.5f
+inline v2 
+ShortestPathWarped(v2 From, v2 To)
+{
+    Assert(InRect(From, ScreenRect));
+    Assert(InRect(To, ScreenRect));
+
+    v2 Diff = To - From;
+
+    float HalfScreenWidth = SCREEN_WIDTH/2.0f;
+    if (Diff.X > HalfScreenWidth) {
+        Diff.X -= SCREEN_WIDTH;
+    }
+    if (Diff.X < -HalfScreenWidth) {
+        Diff.X += SCREEN_WIDTH;
+    }
+    float HalfScreenHeight = SCREEN_HEIGHT/2.0f;
+    if (Diff.Y > HalfScreenHeight) {
+        Diff.Y -= SCREEN_HEIGHT;
+    }
+    if (Diff.Y < -HalfScreenHeight) {
+        Diff.Y += SCREEN_HEIGHT;
+    }
+
+    return Diff;
+}
+
+inline float
+GetDistanceWarped(v2 FirstV, v2 SecondV) 
+{
+    return Length(ShortestPathWarped(FirstV, SecondV));
+}
+
 
 // The properties of a size of asteroid
 typedef struct {
