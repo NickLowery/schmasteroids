@@ -90,6 +90,19 @@ constexpr inline i32 Ceil(float F)
     return Result;
 }
 
+inline i32 EuclideanDivide(float Numerator, float Divisor) {
+    Assert(Divisor > 0.0f);
+    i32 Result = Floor(Numerator/Divisor);
+    return Result;
+}
+
+inline float EuclideanMod(float Value, float Modulus) {
+    Assert(Modulus > 0.0f);
+    float Result = Value - Modulus*EuclideanDivide(Value, Modulus);
+    Assert(Result >= 0.0f);
+    return Result;
+}
+
 typedef struct _v2 {
     union {
         float coords[2];

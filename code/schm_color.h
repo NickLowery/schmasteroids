@@ -16,7 +16,6 @@ typedef struct {
     float L;
 } hsl_color;
 
-
 inline color
 Color(u32 Value)
 {
@@ -32,18 +31,6 @@ NullColor(void)
 }
 
 
-internal i32 EuclideanDivide(float Numerator, float Divisor) {
-    Assert(Divisor > 0.0f);
-    i32 Result = Floor(Numerator/Divisor);
-    return Result;
-}
-
-internal float EuclideanMod(float Value, float Modulus) {
-    Assert(Modulus > 0.0f);
-    float Result = Value - Modulus*EuclideanDivide(Value, Modulus);
-    Assert(Result >= 0.0f);
-    return Result;
-}
 
 typedef union {
     color Colors[4];

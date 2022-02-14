@@ -117,10 +117,6 @@ internal void
 SaveWorkingGlyphToUnitGlyph(editor_state *EditorState, glyph* Glyph);
 
 internal void
-DrawWorkingGlyph(platform_framebuffer *Backbuffer,  
-        color NormalColor, color ActiveColor, working_glyph *Glyph);
-
-internal void
 DeletePointIfOrphaned(editor_state *EditorState, working_point *Point, working_glyph *Glyph);
     
 internal void

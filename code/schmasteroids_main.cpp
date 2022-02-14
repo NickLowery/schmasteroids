@@ -18,7 +18,6 @@
 #include "schm_bench.h"
 #include "schm_hsl_simd1.h"
 #include "schm_render_buffer.h"
-#include "schm_math.cpp"
 #include "schm_sound.cpp"
 
 // NOTE: These glyphs are intended to be scaled to a rectangle, 
@@ -247,7 +246,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
 #if DEBUG_BUILD
     if (WentDown(&Input->DebugKeys.F6)) {
-        DebugToggleMusic(Metagame);
+        DebugToggleMusic();
     }
     if (WentDown(&Input->DebugKeys.F7)) {
         if(Input->Keyboard.Shift.IsDown) {

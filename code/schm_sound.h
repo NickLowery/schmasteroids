@@ -70,49 +70,15 @@ typedef struct {
     i32 AFrameIndexToFinishFade;
 } fade_data;
 
-internal fade_data
-CalculateFadeData(sound_state *SoundState, platform_sound_output_buffer *SoundBuffer)
+#if DEBUG_BUILD
+static bool32 DebugMusicOff = false;
+inline void
+DebugToggleMusic()
 {
-    i32 SampleRate = SoundBuffer->AFramesPerSecond;
-    fade_data Result;
-
-    Result.StartVolume = SoundState->CurrentClip->Gain;
-    Result.SecondsToOutput = (float)SoundBuffer->AFramesToWrite / (float)SampleRate;
-    Result.Finishing = (Result.SecondsToOutput > SoundState->SecondsLeftInFade);
-    Result.FinishVolume = (Result.Finishing) ? 
-                            0.0f:
-                            Result.StartVolume * (1.0f - Result.SecondsToOutput/SoundState->SecondsLeftInFade);
-    Result.AFrameIndexToFinishFade = (Result.Finishing) ?
-                (i32)(SoundBuffer->AFramesToWrite / (SampleRate * (SoundState->SecondsLeftInFade/ Result.SecondsToOutput))):
-                SoundBuffer->AFramesToWrite;
-
-    return Result;
+    DebugMusicOff = !DebugMusicOff;
 }
 
-internal void
-UpdateFadeState(sound_state *SoundState, fade_data Fade)
-{
-    if (Fade.Finishing) {
-        Assert(SoundState->FadingInClip || SoundState->MusicFadingOut);
-        SoundState->CurrentClip->Gain = DEFAULT_GAIN;
-        if (SoundState->FadingInClip) {
-            SoundState->CurrentClip = SoundState->FadingInClip;
-            SoundState->CurrentClip->Gain = DEFAULT_GAIN;
-            SoundState->FadingInClip = 0;
-            if (SoundState->NextClipAfterFade) {
-                SoundState->NextClip = SoundState->NextClipAfterFade;
-                SoundState->NextClipAfterFade = 0;
-            } else {
-                SoundState->NextClip = 0;
-            }
-        } else {
-            SoundState->CurrentClip = 0;
-            SoundState->MusicFadingOut = 0;
-        }
-    } else {
-        SoundState->SecondsLeftInFade -= Fade.SecondsToOutput;
-    }
-}
+#endif
 
 
 #endif

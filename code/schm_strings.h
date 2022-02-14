@@ -1,7 +1,7 @@
 #ifndef SCHMASTEROIDS_STRINGS_H
 #define SCHMASTEROIDS_STRINGS_H 1
 
-internal u32 
+inline u32 
 StringLength(const char* CString)
 {
     i32 Result = 0;
@@ -11,7 +11,7 @@ StringLength(const char* CString)
     return Result;
 }
 
-internal u32
+inline u32
 MaxStringLength(const char** Strings, u32 StringCount)
 {
     u32 Result = 0;
