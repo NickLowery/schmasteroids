@@ -22,16 +22,14 @@ typedef struct {
 
 typedef struct {
     render_entry_type Type;
-    // TODO: Don't need the whole object. Could go back to using a pointer to an object and just
-    // get the data needed for the draw call
-    object Object;
+    v2 Vertices[MAX_VERTICES];
+    u32 VerticesCount;
     light_source Light;
 } render_entry_object;
 
 typedef struct {
     render_entry_type Type;
-    //TODO: We don't need the whole particle struct for sure
-    particle Particle;
+    v2 Position;
     light_source Light;
 } render_entry_particle;
 
@@ -104,7 +102,12 @@ internal void
 PushObject(render_buffer *RenderBuffer, object *Object, float Alpha = 1.0f)
 {
     render_entry_object *Entry = PushRenderEntry(RenderBuffer, render_entry_object);
-    Entry->Object = *Object;
+    Entry->VerticesCount = Object->VerticesCount;
+    for(int VIndex = 0; VIndex < Object->VerticesCount; VIndex++) {
+        v2 MappedVertex = MapFromObjectPosition(Object->Vertices[VIndex], *Object);
+        Entry->Vertices[VIndex] = MappedVertex;
+    }
+
     Entry->Light = Object->Light;
     Entry->Light.C_L *= Alpha;
 }
@@ -123,7 +126,7 @@ internal void
 PushParticle(render_buffer *RenderBuffer, particle* Particle, float Alpha = 1.0f)
 {
     render_entry_particle *Entry = PushRenderEntry(RenderBuffer, render_entry_particle);
-    Entry->Particle = *Particle;
+    Entry->Position = Particle->Position;
     Entry->Light = Particle->Light;
     Entry->Light.C_L *= Alpha;
 }
@@ -251,20 +254,16 @@ Render(render_buffer *RenderBuffer, platform_framebuffer *TargetBuffer, memory_a
                 render_entry_object* Entry = (render_entry_object*) EntryType;
                 NextEntry += sizeof(render_entry_object);
 
-                for(int VIndex = 0; VIndex < Entry->Object.VerticesCount; VIndex++) {
-                    v2 MappedVertex = MapGameSpaceToWindowSpace(MapFromObjectPosition(Entry->Object.Vertices[VIndex], Entry->Object), TargetBuffer);
-                    Entry->Object.Vertices[VIndex] = MappedVertex;
-                }
                 Entry->Light = ScaleLightSource(&Entry->Light, LightScale);
-                DrawObjectSwizzled(&SwizzledBuffer, &Entry->Object, Entry->Light, TransientArena);
+                DrawObjectSwizzled(&SwizzledBuffer, Entry->Vertices, Entry->VerticesCount, Entry->Light, TransientArena);
             } break;
             case RenderEntryType_render_entry_particle: {
                 render_entry_particle* Entry = (render_entry_particle*) EntryType;
                 NextEntry += sizeof(render_entry_particle);
 
-                Entry->Particle.Position = MapGameSpaceToWindowSpace(Entry->Particle.Position, TargetBuffer);
+                Entry->Position = MapGameSpaceToWindowSpace(Entry->Position, TargetBuffer);
                 Entry->Light = ScaleLightSource(&Entry->Light, LightScale);
-                DrawParticleSwizzled(Entry->Particle.Position, &SwizzledBuffer, Entry->Light, TransientArena);
+                DrawParticleSwizzled(Entry->Position, &SwizzledBuffer, Entry->Light, TransientArena);
             } break;
             case RenderEntryType_render_entry_particle_group: {
                 //TODO: Try having an l_buffer that uses u8s or u16s? Could get me back to the look of separate buffers

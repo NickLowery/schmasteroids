@@ -37,6 +37,11 @@
 extern "C"
 GAME_INITIALIZE(GameInitialize) 
 {
+#if BENCH
+    LARGE_INTEGER PerformanceFrequencyLargeInt;
+    QueryPerformanceFrequency(&PerformanceFrequencyLargeInt);
+    DEBUGPerfFrequency = PerformanceFrequencyLargeInt.QuadPart;
+#endif
     Assert(sizeof(metagame_state) < GameMemory->PermanentStorageSize);
     metagame_state *Metagame = (metagame_state*)GameMemory->PermanentStorage;
     Metagame->GameMemory = GameMemory;
@@ -183,7 +188,7 @@ GAME_INITIALIZE(GameInitialize)
     Metagame->Decimal.Segs[3] = {V2(DecLeft, DecTop), V2(DecLeft, DecBottom)};
 
 #if RENDER_BENCHMARK
-    SeedPRNG(42);
+    SeedXoshiro128pp(&GameState->RandState, 42);
     SetUpRenderBenchmark(GameState, Metagame);
     
     Metagame->SoundState.CurrentClip = 0;
@@ -192,7 +197,6 @@ GAME_INITIALIZE(GameInitialize)
     SetUpLevel(Metagame, 10);
     Metagame->CurrentGameMode = GameMode_Playing;
 #elif RUN_GAME_BENCHMARK
-    SeedPRNG(42);
     GlobalFrameCount = 0;
     GlobalFramesToRender = 120;
 #else

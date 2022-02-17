@@ -1,5 +1,5 @@
 @echo off
-set Mode=HSL_DebugOptimized
+set Mode=RenderBenchmark
 
 set Preprocess=No
 

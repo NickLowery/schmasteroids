@@ -143,7 +143,6 @@ typedef struct {
     light_source Light;
 } object;
 
-
 typedef struct {
     object O;
     u8 Size;

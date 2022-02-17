@@ -284,6 +284,16 @@ typedef union {
     };
 } rect;
 
+inline rect InvertedInfiniteRect(void)
+{
+    rect Result;
+    Result.Left = INFINITY;
+    Result.Right = -INFINITY;
+    Result.Top = INFINITY;
+    Result.Bottom = -INFINITY;
+    return Result;
+}
+
 inline rect operator+(rect Rect, v2 Offset)
 {
     rect Result;

@@ -138,5 +138,6 @@ inline v2 MapGameSpaceToWindowSpace(v2 In, platform_framebuffer *Backbuffer)
     return Result;
 }
 
+
 #define SCHM_EDITOR_H 1
 #endif

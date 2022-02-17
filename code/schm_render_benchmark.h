@@ -71,12 +71,12 @@ SetUpRenderBenchmark(game_state *GameState, metagame_state *Metagame)
 
     for(int AsteroidIndex = 0; AsteroidIndex < Level->StartingAsteroids; AsteroidIndex++) {
         asteroid *A = CreateAsteroid(0, GameState, &BenchmarkLightParams);
-        A->O.Position = {RandFloatRange(0.0f, SCREEN_WIDTH), RandFloatRange(0.0f, SCREEN_HEIGHT)};
+        A->O.Position = {RandFloatRange(0.0f, SCREEN_WIDTH, &GameState->RandState), RandFloatRange(0.0f, SCREEN_HEIGHT, &GameState->RandState)};
         A->O.Velocity = V2FromAngleAndMagnitude(
-                RandHeading(), 
-                RandFloatRange(Level->AsteroidMinSpeed, Level->AsteroidMaxSpeed));
-        A->O.Heading = RandHeading();
-        A->O.Spin = RandFloatRange(-INIT_ASTEROID_MAX_SPIN, INIT_ASTEROID_MAX_SPIN);
+                RandHeading(&GameState->RandState), 
+                RandFloatRange(Level->AsteroidMinSpeed, Level->AsteroidMaxSpeed, &GameState->RandState));
+        A->O.Heading = RandHeading(&GameState->RandState);
+        A->O.Spin = RandFloatRange(-INIT_ASTEROID_MAX_SPIN, INIT_ASTEROID_MAX_SPIN, &GameState->RandState);
     }
     GameState->SaucerExists = false;
 }

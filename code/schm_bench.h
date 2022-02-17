@@ -13,6 +13,8 @@ static char *RenderBenchmarkLogCursor = RenderBenchmarkLog;
 static char RenderBenchmarkLogCSV[Kilobytes(128)];
 static char *RenderBenchmarkLogCSVCursor = RenderBenchmarkLogCSV;
 
+static u64 DEBUGPerfFrequency;
+
 inline void WriteToBenchmarkLog(char* String)
 {
     i32 Length = StringLength(String);

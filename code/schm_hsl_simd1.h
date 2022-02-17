@@ -1,20 +1,7 @@
 #ifndef SCHMASTEROIDS_HSLDRAW_H
 #define SCHMASTEROIDS_HSLDRAW_H
 
-//TODO: Cleanup: Are these getting called somewhere? Editor?
-#if 0
-internal void
-DrawLineWarpedWindowSpaceHSL(platform_framebuffer*Backbuffer, metagame_state *MetagameState, hsl_color HSLColor,
-                             v2 First, v2 Second);
 
-internal void
-DrawLine(platform_framebuffer*Backbuffer, color Color,
-        v2 V1, v2 V2);
-
-inline void DrawPixelHSL(platform_framebuffer *Backbuffer, i32 PixelX, i32 PixelY, hsl_color HSLColor);
-
-inline void SetPixelWithAlpha(color *Dest, color Source);
-#endif
 // TODO: Take another pass at this when possible... make sure that the swizzling actually makes sense to do?
 // I suspect that my test in October 2021 was not fair to the unswizzled version. Based on watching Casey's simd
 // optimization, it seems quite possible that getting __m128 values out of structs could have
@@ -67,6 +54,15 @@ typedef struct {
     i32 MemorySize;
     u8 *Memory;
 } rgb_block_buffer;
+
+inline v2 MapGameSpaceToWindowSpace(v2 In, rgb_block_buffer *SwizzledBuffer)
+{
+    v2 Result;
+    Result.X = ((SwizzledBuffer->Width * 2 / SCREEN_WIDTH) * In.X) - 0.5f;
+    Result.Y = ((SwizzledBuffer->Height  * 2 / SCREEN_HEIGHT) * In.Y) - 0.5f;
+    return Result;
+}
+
 
 
 __m128 NegOne = _mm_set_ps1(-1.0f);
@@ -394,7 +390,7 @@ ApplyLineSourceToLBlock(float4 *OutBlock, v2_4 PixelCoords, line_draw_data LineD
 }
 
 internal void
-DrawObjectSwizzled(rgb_block_buffer *SwizzledBuffer, object *O, light_source Light, memory_arena *TransientArena)
+DrawObjectSwizzled(rgb_block_buffer *SwizzledBuffer, v2 *Vertices, u32 VerticesCount, light_source Light, memory_arena *TransientArena)
 {
     float LightMargin = CalculateLightMargin(&Light, 1.0f/255.0f);
     if (LightMargin == 0.0f) {
@@ -403,39 +399,42 @@ DrawObjectSwizzled(rgb_block_buffer *SwizzledBuffer, object *O, light_source Lig
     Assert(TransientArena);
     temporary_memory Temp = BeginTemporaryMemory(TransientArena);
 
-    Assert(O->VerticesCount > 1)
+    Assert(VerticesCount > 1)
     rect BoundingRect;
-    BoundingRect.Min = O->Vertices[0];
-    BoundingRect.Max = O->Vertices[0];
-    for(int VIndex = 1; VIndex < O->VerticesCount; VIndex++) {
-        BoundingRect = ExpandRectToContainPoint(BoundingRect, O->Vertices[VIndex]);
+    Vertices[0] = MapGameSpaceToWindowSpace(Vertices[0], SwizzledBuffer);
+    BoundingRect.Min = Vertices[0];
+    BoundingRect.Max = Vertices[0];
+
+    for (u32 VIndex = 1; VIndex < VerticesCount; VIndex++) {
+        Vertices[VIndex] = MapGameSpaceToWindowSpace(Vertices[VIndex], SwizzledBuffer);
+        BoundingRect = ExpandRectToContainPoint(BoundingRect, Vertices[VIndex]);
     }
     BoundingRect = ExpandRectByRadius(BoundingRect, V2(LightMargin, LightMargin));
     l_buffer LBuffer = AllocateLBufferForBoundingRect(BoundingRect, TransientArena);
-    for(int VIndex = 0; VIndex < O->VerticesCount; VIndex++) {
-        O->Vertices[VIndex] -= LBuffer.MinPoint;
+    for(u32 VIndex = 0; VIndex < VerticesCount; VIndex++) {
+        Vertices[VIndex] -= LBuffer.MinPoint;
     }
 
     // NOTE: L values will be stored as a sequence of four-pixel squares starting in the 
     // upper left of the rect touched by the object and moving to the right then down
 
-    line_draw_data *Lines = PushArrayAligned(TransientArena, O->VerticesCount, line_draw_data, 16);
+    line_draw_data *Lines = PushArrayAligned(TransientArena, VerticesCount, line_draw_data, 16);
     line_draw_data *RetainingLine = Lines;
-    for (i32 VIndex = 0; VIndex < O->VerticesCount - 1; ++VIndex) {
-        *RetainingLine++ = CalculateLineDrawData(O->Vertices[VIndex], O->Vertices[VIndex + 1]);
+    for (u32 VIndex = 0; VIndex < VerticesCount - 1; ++VIndex) {
+        *RetainingLine++ = CalculateLineDrawData(Vertices[VIndex], Vertices[VIndex + 1]);
     }
     // Last line
-    *RetainingLine = CalculateLineDrawData(O->Vertices[O->VerticesCount-1], O->Vertices[0]);
+    *RetainingLine = CalculateLineDrawData(Vertices[VerticesCount-1], Vertices[0]);
 
     float4 *OutBlock = LBuffer.Values;
     for(i32 BlockY = 0; BlockY < LBuffer.BHeight; ++BlockY) {
         for(i32 BlockX = 0; BlockX < LBuffer.BWidth; ++BlockX) {
             v2_4 Pixel = BlockCoordsToPixelCoords(BlockX, BlockY);
 
-            for (i32 VIndex = 0; VIndex < O->VerticesCount; ++VIndex) {
+            for (u32 VIndex = 0; VIndex < VerticesCount; ++VIndex) {
 
                 // TODO: Try retaining vertices as v2_4s?
-                v2_4 Vertex = V2_4FromV2(O->Vertices[VIndex]);                
+                v2_4 Vertex = V2_4FromV2(Vertices[VIndex]);                
                 ApplyPointSourceToLBlockMax(OutBlock, Pixel, Vertex, Light);
 
                 line_draw_data *Line = Lines + VIndex;
