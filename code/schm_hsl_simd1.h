@@ -511,4 +511,169 @@ DrawGlyphSwizzled(rgb_block_buffer *SwizzledBuffer, glyph *Glyph, light_source L
     EndTemporaryMemory(Temp);
 }
 
+internal void
+Render(render_buffer *RenderBuffer, platform_framebuffer *TargetBuffer, memory_arena *TransientArena) 
+{
+    temporary_memory Temp = BeginTemporaryMemory(TransientArena);
+    rgb_block_buffer SwizzledBuffer;
+    SwizzledBuffer.Width = TargetBuffer->Width / 2;
+    SwizzledBuffer.Height = TargetBuffer->Height / 2;
+    SwizzledBuffer.Pitch = SwizzledBuffer.Width * sizeof(rgba_4);
+    SwizzledBuffer.MemorySize = SwizzledBuffer.Pitch * SwizzledBuffer.Height;
+    Assert(SwizzledBuffer.MemorySize == TargetBuffer->MemorySize);
+    SwizzledBuffer.Memory = (u8*)PushSizeAligned(TransientArena, SwizzledBuffer.MemorySize, 16);
+    ZeroSize(SwizzledBuffer.Memory, SwizzledBuffer.MemorySize);
+
+    float LightScale = CalculateLightScale(TargetBuffer);
+
+    for (u8 *NextEntry = RenderBuffer->BaseMemory;
+         NextEntry - RenderBuffer->BaseMemory < RenderBuffer->Size;)
+    {
+        render_entry_type *EntryType = (render_entry_type*)NextEntry;
+        switch(*EntryType) {
+            case RenderEntryType_render_entry_glyph: {
+                render_entry_glyph* Entry = (render_entry_glyph*) EntryType;
+                NextEntry += sizeof(render_entry_glyph);
+
+                glyph ProjectedGlyph = ProjectGlyphIntoRect(Entry->Glyph, Entry->Rect);
+
+                for(int SegIndex = 0; SegIndex < ProjectedGlyph.SegCount; ++SegIndex) {
+                    ProjectedGlyph.Segs[SegIndex].First = MapGameSpaceToWindowSpace(ProjectedGlyph.Segs[SegIndex].First, TargetBuffer);
+                    ProjectedGlyph.Segs[SegIndex].Second = MapGameSpaceToWindowSpace(ProjectedGlyph.Segs[SegIndex].Second, TargetBuffer);
+                }
+                Entry->Light = ScaleLightSource(&Entry->Light, LightScale);
+                DrawGlyphSwizzled(&SwizzledBuffer, &ProjectedGlyph, Entry->Light, TransientArena);
+            } break;
+            case RenderEntryType_render_entry_object: {
+                render_entry_object* Entry = (render_entry_object*) EntryType;
+                NextEntry += sizeof(render_entry_object);
+
+                Entry->Light = ScaleLightSource(&Entry->Light, LightScale);
+                DrawObjectSwizzled(&SwizzledBuffer, Entry->Vertices, Entry->VerticesCount, Entry->Light, TransientArena);
+            } break;
+            case RenderEntryType_render_entry_particle: {
+                render_entry_particle* Entry = (render_entry_particle*) EntryType;
+                NextEntry += sizeof(render_entry_particle);
+
+                Entry->Position = MapGameSpaceToWindowSpace(Entry->Position, TargetBuffer);
+                Entry->Light = ScaleLightSource(&Entry->Light, LightScale);
+                DrawParticleSwizzled(Entry->Position, &SwizzledBuffer, Entry->Light, TransientArena);
+            } break;
+            case RenderEntryType_render_entry_particle_group: {
+                //TODO: Try having an l_buffer that uses u8s or u16s? Could get me back to the look of separate buffers
+                //and have better performance?
+                render_entry_particle_group* Entry = (render_entry_particle_group*) EntryType;
+                  particle_data_sizes DataSizeInfo = GetParticleDataSizes(Entry->ParticleCount);
+                NextEntry += sizeof(render_entry_particle_group);
+                v2 *Positions = (v2*)NextEntry;
+                float *ZDistSqs = (float*)(NextEntry + DataSizeInfo.Position);
+
+                NextEntry += DataSizeInfo.Total;
+                light_source Light;
+                Light.H = Entry->H;
+                Light.S = Entry->S;
+                Light.C_L = Entry->C_L * LightScale;
+#if 1
+                for (i32 PIndex = 0;
+                     PIndex < Entry->ParticleCount;
+                     ++PIndex)
+                {
+                    v2 Position = MapGameSpaceToWindowSpace(Positions[PIndex], TargetBuffer);
+                    Light.ZDistSq = ZDistSqs[PIndex] * LightScale;
+                    DrawParticleSwizzled(Position, &SwizzledBuffer, Light, TransientArena);
+                }
+#else
+
+                rect BoundingRect;
+                BoundingRect.Min = V2(FLT_MAX, FLT_MAX);
+                BoundingRect.Max = V2(FLT_MIN, FLT_MIN);
+                i32 TotalParticles = 0;
+                for(i32 PIndex = 0;
+                    PIndex < Entry->ParticleCount;
+                    ++PIndex)
+                {
+                    Positions[PIndex] = MapGameSpaceToWindowSpace(Positions[PIndex], TargetBuffer);
+                    BoundingRect = ExpandRectToContainPoint(BoundingRect, Positions[PIndex]);
+                    ZDistSqs[PIndex] *= LightScale;
+                }
+                
+                Light.ZDistSq = Entry->MinZDistSq;
+                float LightMargin = CalculateLightMargin(&Light);
+                BoundingRect = ExpandRectByRadius(BoundingRect, V2(LightMargin, LightMargin));
+
+                temporary_memory ParticleGroupTemp = BeginTemporaryMemory(TransientArena);
+                l_buffer LBuffer = AllocateLBufferForBoundingRect(BoundingRect, TransientArena);
+                v2_4 *PositionsAsV2_4 = PushArrayAligned(TransientArena, Entry->ParticleCount, v2_4, 16);
+
+                for(i32 PIndex = 0;
+                    PIndex < Entry->ParticleCount;
+                    ++PIndex)
+                {
+                    PositionsAsV2_4[PIndex] = V2_4FromV2(Positions[PIndex] - LBuffer.MinPoint);
+                }
+
+                float4 *OutBlock = LBuffer.Values;
+                for(i32 BlockY = 0; BlockY < LBuffer.BHeight; ++BlockY) {
+                    for(i32 BlockX = 0; BlockX < LBuffer.BWidth; ++BlockX) {
+                        v2_4 Pixel = BlockCoordsToPixelCoords(BlockX, BlockY);
+                        for(i32 PIndex = 0; PIndex < Entry->ParticleCount; ++PIndex)
+                        {
+                            v2_4 Source = PositionsAsV2_4[PIndex];
+                            Light.ZDistSq = ZDistSqs[PIndex];
+                            ApplyPointSourceToLBlockAdditive(OutBlock, Pixel, Source, Light);
+                        }
+                        ++OutBlock;
+                    }
+                }
+
+                DrawLBufferToRGBBlockBuffer(LBuffer, &SwizzledBuffer, Light.H, Light.S);
+                EndTemporaryMemory(ParticleGroupTemp);
+#endif
+            } break;
+#if DEBUG_BUILD
+            case RenderEntryType_render_entry_pixel_rect: {
+                render_entry_pixel_rect* Entry = (render_entry_pixel_rect*) EntryType;
+                NextEntry += sizeof(render_entry_pixel_rect);
+
+                DrawRectangle(TargetBuffer, Entry->Color, Entry->Rect);
+            } break;
+            case RenderEntryType_render_entry_pixel_line: {
+                render_entry_pixel_line* Entry = (render_entry_pixel_line*) EntryType;
+                NextEntry += sizeof(render_entry_pixel_line);
+
+                DrawLineClipped(TargetBuffer, Entry->Color, Entry->First, Entry->Second);
+            } break;
+            case RenderEntryType_render_entry_pixel_glyph: {
+                render_entry_pixel_glyph* Entry = (render_entry_pixel_glyph*) EntryType;
+                NextEntry += sizeof(render_entry_pixel_glyph);
+
+                glyph ProjectedGlyph = ProjectGlyphIntoRect(Entry->Glyph, Entry->Rect);
+                DrawGlyph(TargetBuffer, Entry->Color, &ProjectedGlyph);
+            } break;
+#endif
+            case RenderEntryType_render_entry_clear: {
+                render_entry_clear* Entry = (render_entry_clear*) EntryType;
+                NextEntry += sizeof(render_entry_clear);
+
+                Assert(TargetBuffer->MemorySize % sizeof(__m128) == 0);
+                __m128i Color4 = _mm_set1_epi32(Entry->Color.Full);
+                for (__m128i *Pixel4 = (__m128i*)TargetBuffer->Memory;
+                     Pixel4 < (__m128i*)(TargetBuffer->Memory + TargetBuffer->MemorySize);
+                     ++Pixel4)
+                {
+                    *Pixel4 = Color4;
+                }
+            } break;
+            InvalidDefault;
+        }
+    }
+
+        BENCH_START_COUNTING_CYCLES(SwizzleFrameBuffer)
+        UnswizzleRGBBlockBufferToFrameBuffer(&SwizzledBuffer, TargetBuffer);
+        BENCH_STOP_COUNTING_CYCLES(SwizzleFrameBuffer)
+
+        EndTemporaryMemory(Temp);
+}
+
+
 #endif
