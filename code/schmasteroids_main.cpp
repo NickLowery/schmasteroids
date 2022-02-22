@@ -17,7 +17,7 @@
 // NOTE: Always include, defines macros as nothing if we're not in benchmark mode
 #include "schm_bench.h"
 #include "schm_render_buffer.h"
-#include "schm_hsl_simd1.h"
+#include "schm_hsl_simd1.cpp"
 #include "schm_sound.cpp"
 
 // NOTE: These glyphs are intended to be scaled to a rectangle, 
